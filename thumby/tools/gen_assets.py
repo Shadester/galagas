@@ -64,14 +64,14 @@ def halve(rows):
 
 
 SHIP = ['....w....',
-        '....w....',
-        '...wcw...',
-        '...www...',
-        '..bwwwb..',
-        '.rbwwwbr.',
-        '.rbbwbbr.',
-        'wrbbbbbrw',
-        '.rr.b.rr.']
+       '....w....',
+       '...wcw...',
+       '...wcw...',
+       '..bwwwb..',
+       '.rbwwwbr.',
+       'rrbbwbbrr',
+       'wrbbbbbrw',
+       '.rr.b.rr.']
 CAPTIVE = [r.translate(str.maketrans('wbrc', 'fryw')) for r in SHIP]       # red and pink
 LIFE = ['..w..', '..w..', '.bwb.', 'bwwwb', 'rb.br']                      # the lives icon of the HUD
 PBUL = ['c', 'c', 'l', 'l', 'c']
