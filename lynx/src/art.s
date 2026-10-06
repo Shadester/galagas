@@ -7,10 +7,10 @@ spr_player:   ; 9x11
     .byte 6, $00, $00, $10, $00, $00
     .byte 6, $00, $00, $10, $00, $00
     .byte 6, $00, $01, $41, $00, $00
-    .byte 6, $00, $01, $11, $00, $00
+    .byte 6, $00, $01, $41, $00, $00
     .byte 6, $00, $31, $11, $30, $00
     .byte 6, $02, $31, $11, $32, $00
-    .byte 6, $02, $33, $13, $32, $00
+    .byte 6, $22, $33, $13, $32, $20
     .byte 6, $12, $33, $33, $32, $10
     .byte 6, $13, $33, $33, $33, $10
     .byte 6, $13, $03, $33, $03, $10
@@ -20,18 +20,18 @@ spr_player_red:   ; 9x11
     .byte 6, $00, $00, $f0, $00, $00
     .byte 6, $00, $00, $f0, $00, $00
     .byte 6, $00, $0f, $1f, $00, $00
-    .byte 6, $00, $0f, $ff, $00, $00
+    .byte 6, $00, $0f, $1f, $00, $00
     .byte 6, $00, $2f, $ff, $20, $00
     .byte 6, $05, $2f, $ff, $25, $00
-    .byte 6, $05, $22, $f2, $25, $00
+    .byte 6, $55, $22, $f2, $25, $50
     .byte 6, $f5, $22, $22, $25, $f0
     .byte 6, $f2, $22, $22, $22, $f0
     .byte 6, $f2, $02, $22, $02, $f0
     .byte 6, $55, $00, $20, $05, $50
     .byte 0
 spr_pbul:   ; 1x6
-    .byte 2, $b0
-    .byte 2, $b0
+    .byte 2, $50
+    .byte 2, $40
     .byte 2, $40
     .byte 2, $40
     .byte 2, $b0
@@ -41,8 +41,8 @@ spr_ebul:   ; 2x8
     .byte 3, $55, $00
     .byte 3, $22, $00
     .byte 3, $22, $00
-    .byte 3, $22, $00
-    .byte 3, $22, $00
+    .byte 3, $55, $00
+    .byte 3, $55, $00
     .byte 3, $22, $00
     .byte 3, $22, $00
     .byte 3, $55, $00
@@ -143,19 +143,20 @@ spr_bossp_b:   ; 12x10
     .byte 8, $00, $07, $70, $07, $70, $00, $00
     .byte 8, $00, $77, $00, $00, $77, $00, $00
     .byte 0
-spr_expl1:   ; 4x4
-    .byte 4, $05, $50, $00
-    .byte 4, $58, $85, $00
-    .byte 4, $58, $85, $00
-    .byte 4, $05, $50, $00
+spr_expl1:   ; 6x5
+    .byte 5, $00, $55, $00, $00
+    .byte 5, $05, $88, $50, $00
+    .byte 5, $58, $55, $85, $00
+    .byte 5, $05, $88, $50, $00
+    .byte 5, $00, $55, $00, $00
     .byte 0
 spr_expl2:   ; 10x7
     .byte 7, $00, $05, $00, $50, $00, $00
-    .byte 7, $05, $00, $88, $00, $50, $00
-    .byte 7, $00, $88, $55, $88, $00, $00
-    .byte 7, $50, $85, $44, $58, $05, $00
-    .byte 7, $00, $88, $55, $88, $00, $00
-    .byte 7, $05, $00, $88, $00, $50, $00
+    .byte 7, $05, $08, $88, $80, $50, $00
+    .byte 7, $00, $85, $55, $58, $00, $00
+    .byte 7, $58, $85, $44, $58, $85, $00
+    .byte 7, $00, $85, $55, $58, $00, $00
+    .byte 7, $05, $08, $88, $80, $50, $00
     .byte 7, $00, $05, $00, $50, $00, $00
     .byte 0
 spr_expl3:   ; 11x9
@@ -169,12 +170,12 @@ spr_expl3:   ; 11x9
     .byte 7, $00, $00, $50, $05, $00, $00
     .byte 7, $00, $50, $00, $00, $05, $00
     .byte 0
-spr_pexp1:   ; 4x5
-    .byte 4, $05, $50, $00
-    .byte 4, $55, $55, $00
-    .byte 4, $58, $85, $00
-    .byte 4, $55, $55, $00
-    .byte 4, $05, $50, $00
+spr_pexp1:   ; 6x5
+    .byte 5, $00, $44, $00, $00
+    .byte 5, $55, $55, $55, $00
+    .byte 5, $58, $44, $85, $00
+    .byte 5, $55, $44, $55, $00
+    .byte 5, $00, $55, $00, $00
     .byte 0
 spr_pexp2:   ; 8x8
     .byte 6, $00, $04, $40, $00, $00
@@ -309,5 +310,5 @@ spr_beam_3_3:   ; 44x4
     .byte 0
 sprite_lo: .byte <spr_player, <spr_player_red, <spr_pbul, <spr_ebul, <spr_bee_a, <spr_bee_b, <spr_bfly_a, <spr_bfly_b, <spr_boss_a, <spr_boss_b, <spr_bossp_a, <spr_bossp_b, <spr_expl1, <spr_expl2, <spr_expl3, <spr_pexp1, <spr_pexp2, <spr_pexp3, <spr_pexp4, <spr_beam_0_0, <spr_beam_0_1, <spr_beam_0_2, <spr_beam_0_3, <spr_beam_1_0, <spr_beam_1_1, <spr_beam_1_2, <spr_beam_1_3, <spr_beam_2_0, <spr_beam_2_1, <spr_beam_2_2, <spr_beam_2_3, <spr_beam_3_0, <spr_beam_3_1, <spr_beam_3_2, <spr_beam_3_3
 sprite_hi: .byte >spr_player, >spr_player_red, >spr_pbul, >spr_ebul, >spr_bee_a, >spr_bee_b, >spr_bfly_a, >spr_bfly_b, >spr_boss_a, >spr_boss_b, >spr_bossp_a, >spr_bossp_b, >spr_expl1, >spr_expl2, >spr_expl3, >spr_pexp1, >spr_pexp2, >spr_pexp3, >spr_pexp4, >spr_beam_0_0, >spr_beam_0_1, >spr_beam_0_2, >spr_beam_0_3, >spr_beam_1_0, >spr_beam_1_1, >spr_beam_1_2, >spr_beam_1_3, >spr_beam_2_0, >spr_beam_2_1, >spr_beam_2_2, >spr_beam_2_3, >spr_beam_3_0, >spr_beam_3_1, >spr_beam_3_2, >spr_beam_3_3
-sprite_dx: .byte 2, 2, 4, 5, 0, 0, 0, 2, 0, 0, 0, 0, 4, 1, 0, 4, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-sprite_dy: .byte 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+sprite_dx: .byte 2, 2, 4, 5, 0, 0, 0, 2, 0, 0, 0, 0, 3, 1, 0, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+sprite_dy: .byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
