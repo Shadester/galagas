@@ -2,12 +2,12 @@
 // . clear | m main, M light, n dark (per variant) | y yellow, Y dark yellow, c cyan, w white, k near-black, o orange, r red, b blue, g grey
 #![allow(dead_code)]
 
-pub static ART_BEE_A: [&str; 16] = ["........", "...y....", "....y...", ".n...mmm", "nMn.mMMm", "nMMnmmMm", "nMMnmkkm", ".nMmmmmm", "..nmmYyy", "...nmmmm", "....mYyy", "....nmmm", ".....nmm", "......nn", "........", "........"];
-pub static ART_BEE_B: [&str; 16] = ["........", "...y....", "....y...", ".....mmm", "....mMMm", "...nmmMm", "...nmkkm", ".n.nmmmm", "nMn.mYyy", "nMMnmmmm", "nMMnmYyy", ".nMmnmmm", "..nmnnmm", "...n.nnn", "........", "........"];
-pub static ART_BFLY_A: [&str; 16] = ["........", "..y...y.", "...y.y..", "Mm....cc", "MMmn..cw", "MMMmn.cc", "mMMmnmcc", ".mmmmmmm", ".nmmmmym", "..nmmmmm", "..nnmmmM", "...nmmMm", "....nmmm", ".....nnm", "........", "........"];
-pub static ART_BFLY_B: [&str; 16] = ["........", "...y.y..", "....yy..", ".....ccc", "....mcww", "....mmcc", "...mMmcc", "...mMmmm", "...nMmmy", "....mmmm", "....nmmm", "...mnmMm", "...mnnmm", "....nmnn", "........", "........"];
-pub static ART_BOSS_A: [&str; 16] = ["........", "...c..cc", "..ccy.cc", "...cyyyc", "..mmmmmc", ".mMMmmmm", ".mMYymmY", "nmmYyYmm", "nnmmmmmm", "..nMmmmm", "..nnmmmm", ".nmn.mmm", "nm.n.nmm", "n..n..nn", "........", "........"];
-pub static ART_BOSS_B: [&str; 16] = ["........", "...c..cc", "..ccy.cc", "...cyyyc", "..mmmmmc", ".mMMmmmm", ".mMYymmY", "nmmYyYmm", "nnmmmmmm", "..nMmmmm", "..nnmmmm", "..nnmmmm", "...nmnmm", "...nn.nn", "........", "........"];
+pub static ART_BEE_A: [&str; 16] = ["........", "...y....", "....y...", "nn...mmm", "nMn.mMMm", "nMMnmrrm", "nMMnmmkm", ".nMmmmmm", "..nmmYyy", "...nmmmm", "....mYyy", "....nmmm", ".....nmm", "......nn", ".......n", "........"];
+pub static ART_BEE_B: [&str; 16] = ["........", "...y....", "....y...", ".....mmm", "....mMMm", "...nmrrm", "...nmmkm", ".n.nmmmm", "nMn.mYyy", "nMMnmmmm", "nMMnmYyy", ".nMmnmmm", "..nm.nmm", "......nn", ".......n", "........"];
+pub static ART_BFLY_A: [&str; 16] = ["........", "..y...y.", "...y.y..", "Mm...ccc", "MMmn.cwc", "MyMmncwc", "mMyMnccc", ".mmmmmmm", ".nmmmyym", "..nmmmmm", "..nnmmmM", "...nmmMm", "....nmmm", ".....nnm", "........", "........"];
+pub static ART_BFLY_B: [&str; 16] = ["........", "...y..y.", ".....y..", "...Mmccc", "...MMcwc", "..MyMcwc", "..mMyccc", "...mmmmm", "...nmyym", "....mmmm", "...nmmmM", "...mmmMm", "...mnmmm", ".....nnm", "........", "........"];
+pub static ART_BOSS_A: [&str; 16] = ["......cc", "...c.ccw", "..ccyycc", "..yyyyyc", "..nmmmmM", ".nMMmmmm", ".mMYymmY", "nmmYyYmm", "nnmmmmmm", "nnnMmmmm", "..nnmmmm", ".nmn.mmm", "nm.n.nmm", "n..n..nn", "........", "........"];
+pub static ART_BOSS_B: [&str; 16] = ["......cc", "...c.ccw", "..ccyycc", "..yyyyyc", "..nmmmmM", ".nMMmmmm", ".mMYymmY", "nmmYyYmm", "nnmmmmmm", "nnnMmmmm", "..nnmmmm", "..nnmmmm", "...nmnmm", "...nn.nn", "........", "........"];
 pub static ART_PLAYER: [&str; 16] = [".......w", ".......w", ".......w", "......ww", "......wr", "......wr", ".....bww", ".....bwc", "..r..bww", "..rb.bbw", "..rbbbbb", ".wrbbbwb", ".wbbbbwb", ".wb..bbk", ".rr...rr", "........"];
 pub static ART_XA0: [&str; 16] = ["........", "........", "........", "........", "........", ".......o", "......oy", ".....oyw", ".....oyw", "......oy", ".......o", "........", "........", "........", "........", "........"];
 pub static ART_XA1: [&str; 16] = ["........", "........", "...o....", "....o..y", ".....o..", "..y..ow.", "......yw", "..oo.ywy", "..oo.ywy", "......yw", "..y..ow.", ".....o..", "....o..y", "...o....", "........", "........"];

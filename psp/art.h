@@ -9,27 +9,27 @@ typedef const char *const ArtRows[ART_ROWS];
 
 /* Bee (zako): blue. Frame A wings up, frame B wings down. */
 static ArtRows art_bee_a = {
-    "........", "...y....", "....y...", ".n...mmm", "nMn.mMMm", "nMMnmmMm", "nMMnmkkm", ".nMmmmmm",
-    "..nmmYyy", "...nmmmm", "....mYyy", "....nmmm", ".....nmm", "......nn", "........", "........" };
+    "........", "...y....", "....y...", "nn...mmm", "nMn.mMMm", "nMMnmrrm", "nMMnmmkm", ".nMmmmmm",
+    "..nmmYyy", "...nmmmm", "....mYyy", "....nmmm", ".....nmm", "......nn", ".......n", "........" };
 static ArtRows art_bee_b = {
-    "........", "...y....", "....y...", ".....mmm", "....mMMm", "...nmmMm", "...nmkkm", ".n.nmmmm",
-    "nMn.mYyy", "nMMnmmmm", "nMMnmYyy", ".nMmnmmm", "..nmnnmm", "...n.nnn", "........", "........" };
+    "........", "...y....", "....y...", ".....mmm", "....mMMm", "...nmrrm", "...nmmkm", ".n.nmmmm",
+    "nMn.mYyy", "nMMnmmmm", "nMMnmYyy", ".nMmnmmm", "..nm.nmm", "......nn", ".......n", "........" };
 
 /* Butterfly (goei): red. Frame A wings open, frame B closed. */
 static ArtRows art_bfly_a = {
-    "........", "..y...y.", "...y.y..", "Mm....cc", "MMmn..cw", "MMMmn.cc", "mMMmnmcc", ".mmmmmmm",
-    ".nmmmmym", "..nmmmmm", "..nnmmmM", "...nmmMm", "....nmmm", ".....nnm", "........", "........" };
+    "........", "..y...y.", "...y.y..", "Mm...ccc", "MMmn.cwc", "MyMmncwc", "mMyMnccc", ".mmmmmmm",
+    ".nmmmyym", "..nmmmmm", "..nnmmmM", "...nmmMm", "....nmmm", ".....nnm", "........", "........" };
 static ArtRows art_bfly_b = {
-    "........", "...y.y..", "....yy..", ".....ccc", "....mcww", "....mmcc", "...mMmcc", "...mMmmm",
-    "...nMmmy", "....mmmm", "....nmmm", "...mnmMm", "...mnnmm", "....nmnn", "........", "........" };
+    "........", "...y..y.", ".....y..", "...Mmccc", "...MMcwc", "..MyMcwc", "..mMyccc", "...mmmmm",
+    "...nmyym", "....mmmm", "...nmmmM", "...mmmMm", "...mnmmm", ".....nnm", "........", "........" };
 
 /* Boss Galaga: green (purple when damaged). Frame A legs splayed, B legs tucked. */
 static ArtRows art_boss_a = {
-    "........", "...c..cc", "..ccy.cc", "...cyyyc", "..mmmmmc", ".mMMmmmm", ".mMYymmY", "nmmYyYmm",
-    "nnmmmmmm", "..nMmmmm", "..nnmmmm", ".nmn.mmm", "nm.n.nmm", "n..n..nn", "........", "........" };
+    "......cc", "...c.ccw", "..ccyycc", "..yyyyyc", "..nmmmmM", ".nMMmmmm", ".mMYymmY", "nmmYyYmm",
+    "nnmmmmmm", "nnnMmmmm", "..nnmmmm", ".nmn.mmm", "nm.n.nmm", "n..n..nn", "........", "........" };
 static ArtRows art_boss_b = {
-    "........", "...c..cc", "..ccy.cc", "...cyyyc", "..mmmmmc", ".mMMmmmm", ".mMYymmY", "nmmYyYmm",
-    "nnmmmmmm", "..nMmmmm", "..nnmmmm", "..nnmmmm", "...nmnmm", "...nn.nn", "........", "........" };
+    "......cc", "...c.ccw", "..ccyycc", "..yyyyyc", "..nmmmmM", ".nMMmmmm", ".mMYymmY", "nmmYyYmm",
+    "nnmmmmmm", "nnnMmmmm", "..nnmmmm", "..nnmmmm", "...nmnmm", "...nn.nn", "........", "........" };
 
 /* Player fighter. */
 static ArtRows art_player = {

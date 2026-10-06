@@ -83,19 +83,19 @@ def to_pens(rows, variant):
 
 
 def cut(rows, sparse=False):
-    """16 x 16 -> 8 x 8: the most frequent pen of each 2 x 2 block (a tie: the brighter special colours first)."""
+    """16 x 16 -> 8 x 8: the most frequent pen of each 2 x 2 block (a tie: the brighter special colours first, then by letter)."""
     out = []
     for y in range(0, 16, 2):
         line = ''
-        for x in range(0, 16, 2):
+        for x in range(0, 8, 2):                                        # the left half: the art is mirrored, so is the cut
             blk = [rows[y][x], rows[y][x + 1], rows[y + 1][x], rows[y + 1][x + 1]]
             ink = [p for p in blk if p != '.']
             if len(ink) < (1 if sparse else 2):
                 line += '.'
                 continue
-            best = max(set(ink), key=lambda p: (ink.count(p), p in PRIORITY and 5 - PRIORITY.index(p)))
+            best = max(sorted(set(ink)), key=lambda p: (ink.count(p), p in PRIORITY and 5 - PRIORITY.index(p)))
             line += best
-        out.append(line)
+        out.append(line + line[::-1])
     return out
 
 
