@@ -29,12 +29,11 @@
   <canvas id="wave" width="660" height="300"></canvas>
   <div class="dim" id="info">L (X) in green, R (Y) in pale blue: one video frame of the signal.</div>
   <div class="row">
-    <button id="snd" aria-pressed="false">Sound: off</button>
-    <button id="xy" aria-pressed="false" title="Left and right channels carry the picture: for a real scope. Sound effects are muted.">XY out: off</button>
-    <button id="retrace" aria-pressed="false" title="Show the jumps between lines, as a scope without blanking draws them.">Retrace: off</button>
+    <button id="xy" aria-pressed="false" title="The audio output is the picture: left channel X, right channel Y. For a real oscilloscope. Off: no sound.">XY out: off</button>
+    <button id="retrace" aria-pressed="false" title="Show the jumps between lines: a scope without a blanking input draws them too, dimmer because the beam moves fast.">Retrace: off</button>
   </div>
   <div class="row dim">Arrow keys or A / D move, Space fires, P pauses.<br>
-    <b>Sound</b> starts the audio (the page needs a click). With XY out off, the speakers play the sound effects. With XY out on, the audio is the picture (turn the volume up, use DC coupling on the scope, and see the <a href="https://github.com/Shadester/galagas/tree/master/scope">notes</a>).<br>
+    <b>XY out</b> plays the picture as sound (left = X, right = Y) for a real scope: turn the volume up, use DC coupling, and see the <a href="https://github.com/Shadester/galagas/tree/master/scope">notes</a>. It sounds like a harsh buzz. With XY out off, the page is silent.<br>
     <a href="https://github.com/Shadester/galagas/tree/master/tui">Source</a> · <a href="../">All versions</a></div>
 </div>
 <script>
@@ -84,8 +83,9 @@
     g.lineCap = 'round';
     g.lineJoin = 'round';
     g.globalCompositeOperation = 'lighter';
-    if (retrace) {
-      g.strokeStyle = 'rgba(80, 130, 255, 0.35)'; g.lineWidth = 1; g.shadowBlur = 0;
+    g.shadowColor = '#3f8'; g.shadowBlur = 10; g.lineWidth = 2.4;
+    if (retrace) {                                         // the jumps between lines: the same beam, 1/6 as bright (it moves 6 times as fast)
+      g.strokeStyle = 'rgba(127, 255, 187, 0.17)';
       g.beginPath();
       let px = 2047.5, py = 2047.5;
       for (let i = 0; i < nseg; i++) {
@@ -95,7 +95,7 @@
       }
       g.stroke();
     }
-    g.shadowColor = '#3f8'; g.shadowBlur = 10; g.strokeStyle = '#7fb'; g.lineWidth = 2.4;
+    g.strokeStyle = '#7fb';
     g.beginPath();
     for (let i = 0; i < nseg; i++) {
       const o = i * 4;
@@ -121,69 +121,40 @@
       (samples.length / 2 / SR * 1000).toFixed(1) + ' ms (' + Math.min(99, SR / (samples.length / 2)).toFixed(0) + ' Hz). L (X) green, R (Y) blue.';
   }
 
-  // ---- audio: the picture (worklet) and the sound effects (oscillators) ----
-  let ac = null, picGain = null, sfxGain = null, node = null, xyOn = q.has('xy'), retrace = false;
+  // ---- audio: the picture, as a stereo signal (an audio worklet loops the samples of the last frame). Only with XY out on. ----
+  let ac = null, picGain = null, node = null, xyOn = q.has('xy'), retrace = false;
   const WORKLET = `class S extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(2);this.n=null;this.i=0;
     this.port.onmessage=e=>{this.n=e.data}}
     process(_,o){const L=o[0][0],R=o[0][1];for(let k=0;k<L.length;k++){if(this.i>=this.b.length-1){this.i=0;if(this.n){this.b=this.n;this.n=null}}
     L[k]=this.b[this.i++]*.9;R[k]=this.b[this.i++]*.9}return true}}registerProcessor('scope',S)`;
   async function startAudio() {
-    if (ac) { await ac.resume(); return; }
-    ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
-    await ac.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
-    node = new AudioWorkletNode(ac, 'scope', { outputChannelCount: [2] });
-    picGain = ac.createGain(); sfxGain = ac.createGain();
-    node.connect(picGain).connect(ac.destination);
-    sfxGain.connect(ac.destination);
-    setMode();
-    window.__galaga.audio = ac;
+    if (!ac) {
+      ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
+      await ac.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+      node = new AudioWorkletNode(ac, 'scope', { outputChannelCount: [2] });
+      picGain = ac.createGain();
+      node.connect(picGain).connect(ac.destination);
+      window.__galaga.audio = ac;
+      window.__galaga.pic = picGain;
+    }
+    await ac.resume();
+    picGain.gain.value = 1;
   }
-  function setMode() {
-    if (!ac) return;
-    picGain.gain.value = xyOn ? 1 : 0;                     // the stereo pair carries the picture, or the sound effects, not both
-    sfxGain.gain.value = xyOn ? 0 : 1;
-  }
-  const NOTES = {
-    32: [[392, 7], [523, 7], [659, 7], [784, 7], [1047, 30]], 64: [[523, 12], [440, 12], [349, 12], [262, 40]],
-    128: [[523, 6], [440, 6], [349, 6], [294, 6], [262, 20]], 256: [[523, 5], [659, 5], [784, 5], [1047, 5], [784, 5], [1047, 20]],
-    512: [[784, 4], [1047, 4], [784, 4], [1047, 4], [784, 4], [1047, 16]],
-  };
-  let noiseBuf = null;
-  function tone(type, f0, f1, amp, dur, when = 0) {
-    const o = ac.createOscillator(), a = ac.createGain(), t = ac.currentTime + when;
-    o.type = type; o.frequency.setValueAtTime(f0, t); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    a.gain.setValueAtTime(amp, t); a.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(a).connect(sfxGain); o.start(t); o.stop(t + dur + 0.02);
-  }
-  function noise(amp, dur, rate) {
-    if (!noiseBuf) { noiseBuf = ac.createBuffer(1, SR, SR); const d = noiseBuf.getChannelData(0); for (let i = 0; i < SR; i++) d[i] = Math.random() * 2 - 1; }
-    const s = ac.createBufferSource(), a = ac.createGain(), t = ac.currentTime;
-    s.buffer = noiseBuf; s.playbackRate.value = rate / 8000; s.loop = true;
-    a.gain.setValueAtTime(amp, t); a.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    s.connect(a).connect(sfxGain); s.start(t); s.stop(t + dur + 0.02);
-  }
-  function sfx(e) {
-    if (!ac || xyOn || !e) return;
-    if (e & 1) tone('square', 1200, 900, 0.10, 0.09);
-    if (e & 4) tone('triangle', 360, 300, 0.18, 0.28);
-    if (e & 2) noise(0.25, 0.3, 4810);
-    if (e & 8) noise(0.35, 0.8, 1800);
-    if (e & 16) tone('sawtooth', 810, 120, 0.06, 0.46);
-    for (const k in NOTES) if (e & k) { let t = 0; for (const [f, n] of NOTES[k]) { tone('square', f, f, 0.07, n / 50, t); t += n / 50; } }
+  async function setMode() {                              // a browser starts audio only after a click or a key: ?xy starts it at the first one
+    if (xyOn) await startAudio(); else if (ac) { picGain.gain.value = 0; await ac.suspend(); }
   }
   const btn = (id, f) => document.getElementById(id).addEventListener('click', f);
-  btn('snd', async e => {
-    const on = e.target.getAttribute('aria-pressed') !== 'true';
-    if (on) { await startAudio(); } else if (ac) { await ac.suspend(); }
-    e.target.setAttribute('aria-pressed', on); e.target.textContent = 'Sound: ' + (on ? 'on' : 'off');
-  });
   btn('xy', e => {
     xyOn = !xyOn; e.target.setAttribute('aria-pressed', xyOn); e.target.textContent = 'XY out: ' + (xyOn ? 'on' : 'off'); setMode();
   });
   btn('retrace', e => {
     retrace = !retrace; e.target.setAttribute('aria-pressed', retrace); e.target.textContent = 'Retrace: ' + (retrace ? 'on' : 'off');
   });
-  if (xyOn) { const b = document.getElementById('xy'); b.setAttribute('aria-pressed', 'true'); b.textContent = 'XY out: on'; }
+  if (xyOn) {
+    const b = document.getElementById('xy'); b.setAttribute('aria-pressed', 'true'); b.textContent = 'XY out: on';
+    const first = () => { removeEventListener('keydown', first); removeEventListener('pointerdown', first); if (xyOn) setMode(); };
+    addEventListener('keydown', first); addEventListener('pointerdown', first);
+  }
 
   // ---- keys: held ones (left, right) and pulses (one tick for every press, repeats too) ----
   const HELD = { ArrowLeft: K_LEFT, KeyA: K_LEFT, ArrowRight: K_RIGHT, KeyD: K_RIGHT };
@@ -199,7 +170,7 @@
   window.addEventListener('pagehide', saveHi);
 
   // ---- 50 ticks a second; the picture is made after the ticks ----
-  let last = performance.now(), acc = 0, snd = 0;
+  let last = performance.now(), acc = 0;
   window.__galaga = { x, ticks: 0, samples: () => samples, segments: () => nseg };   // for the tests
   function frame(now) {
     acc = Math.min(acc + now - last, 100);
@@ -218,7 +189,6 @@
       nseg = x.web_line_count();
       segs = new Int16Array(x.memory.buffer, p, nseg * 4).slice();
       samples = trace(segs, nseg);
-      sfx(x.web_snd());
       if (node) node.port.postMessage(samples.slice());
     }
     drawScope(retrace);

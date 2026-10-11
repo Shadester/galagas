@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The oscilloscope version (../docs/scope) in headless Chromium: the page runs, the software scope draws, the signal is a picture
-(the samples are in range, they hold the lines), keys move the ship, the audio worklet starts and plays the same samples.
+(the samples are in range, they hold the lines), keys move the ship, the audio worklet runs only with XY out on.
 Needs playwright (pip install playwright; playwright install chromium); builds the module first.
 Usage: python3 tests/test_scope.py [screenshot.png]"""
 import functools
@@ -57,13 +57,20 @@ with sync_playwright() as p:
     check('the samples are in range', len(s) > 100 and all(-1.0001 <= v <= 1.0001 for v in s), len(s))
     check('the picture fills the box (X and Y both move)', max(s[0::2]) - min(s[0::2]) > 0.5 and max(s[1::2]) - min(s[1::2]) > 0.3)
     page.screenshot(path=sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', 'build', 'scope.png'))
-    page.click('#snd')
-    page.wait_for_function('window.__galaga.audio && window.__galaga.audio.state === "running"', timeout=10000)
-    check('the audio starts', True)
+    check('no audio before XY out is on', page.evaluate('!window.__galaga.audio'))
     page.click('#xy')
-    check('XY mode on', page.get_attribute('#xy', 'aria-pressed') == 'true')
+    page.wait_for_function('window.__galaga.audio && window.__galaga.audio.state === "running"', timeout=10000)
+    check('XY out starts the audio', page.get_attribute('#xy', 'aria-pressed') == 'true')
+    # the signal that reaches the output with XY on: a loud picture, not silence
+    level = page.evaluate("""async () => { const g = window.__galaga, a = g.audio.createAnalyser(); a.fftSize = 2048; g.pic.connect(a);
+        await new Promise(r => setTimeout(r, 600)); const d = new Float32Array(a.fftSize); a.getFloatTimeDomainData(d);
+        let s = 0; for (const v of d) s += v * v; return { rms: Math.sqrt(s / d.length), gain: g.pic.gain.value }; }""")
+    check('XY out carries the picture (rms of the output)', level['rms'] > 0.05 and level['gain'] == 1, level)
     page.click('#retrace')
     check('retrace on', page.get_attribute('#retrace', 'aria-pressed') == 'true')
+    page.click('#xy')
+    page.wait_for_function('window.__galaga.audio.state === "suspended"', timeout=10000)
+    check('XY out off: no sound', page.evaluate('window.__galaga.pic.gain.value') == 0)
     check('no page errors', not errors, errors)
     page.close()
     # keys: with no autoplay the ship stands still until a key is held
