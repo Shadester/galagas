@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galaga for the oscilloscope</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #020604; color: #9c9; font: 13px/1.45 system-ui, sans-serif; }
+  body { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 18px; padding: 12px; box-sizing: border-box; }
+  #scopebox { position: relative; width: min(96vw, calc(100vh - 24px), 900px); aspect-ratio: 1; border-radius: 18px; padding: 14px; box-sizing: border-box;
+              background: #0c120e; box-shadow: inset 0 0 30px #000, 0 0 0 2px #1d2a21; }
+  #scope { width: 100%; height: 100%; display: block; border-radius: 10px; background: #00150a; }
+  #side { width: 330px; max-width: 96vw; }
+  #side h1 { font-size: 16px; margin: 0 0 6px; color: #7f9; font-weight: 600; letter-spacing: .04em; }
+  #wave { width: 100%; height: 150px; display: block; background: #00150a; border-radius: 6px; margin: 8px 0; }
+  button { background: #12261a; color: #9fb; border: 1px solid #2c4a37; border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; margin: 2px 4px 2px 0; }
+  button[aria-pressed="true"] { background: #1f5a38; color: #dfe; }
+  .row { margin: 6px 0; }
+  .dim { color: #6a8; }
+  a { color: #8fc; }
+  code { color: #bfd; }
+</style>
+</head>
+<body>
+<div id="scopebox"><canvas id="scope" width="900" height="900"></canvas></div>
+<div id="side">
+  <h1>GALAGA · OSCILLOSCOPE</h1>
+  <div class="row">The game is drawn as lines. The picture is also a sound: <b>left channel = X, right channel = Y</b>. Put a real oscilloscope in X/Y mode on the headphone jack and it shows the game.</div>
+  <canvas id="wave" width="660" height="300"></canvas>
+  <div class="dim" id="info">L (X) in green, R (Y) in pale blue: one video frame of the signal.</div>
+  <div class="row">
+    <button id="snd" aria-pressed="false">Sound: off</button>
+    <button id="xy" aria-pressed="false" title="Left and right channels carry the picture: for a real scope. Sound effects are muted.">XY out: off</button>
+    <button id="retrace" aria-pressed="false" title="Show the jumps between lines, as a scope without blanking draws them.">Retrace: off</button>
+  </div>
+  <div class="row dim">Arrow keys or A / D move, Space fires, P pauses.<br>
+    <b>Sound</b> starts the audio (the page needs a click). With XY out off, the speakers play the sound effects. With XY out on, the audio is the picture (turn the volume up, use DC coupling on the scope, and see the <a href="https://github.com/Shadester/galagas/tree/master/scope">notes</a>).<br>
+    <a href="https://github.com/Shadester/galagas/tree/master/tui">Source</a> · <a href="../">All versions</a></div>
+</div>
+<script>
+(async () => {
+  const K_LEFT = 1, K_RIGHT = 2, K_FIRE = 4, K_PAUSE = 8, K_QUIT = 16;
+  const SR = 48000, SPEED = 160;                           // 48 kHz; a line of the picture takes one sample for every SPEED box units
+  const q = new URLSearchParams(location.search);          // ?autoplay  ?god  ?stage=3  ?xy
+  let x;
+  try {
+    x = (await WebAssembly.instantiate(await (await fetch('galaga.wasm')).arrayBuffer(), {})).instance.exports;
+  } catch (e) {
+    document.body.textContent = 'This browser cannot run the game (WebAssembly): ' + e;
+    return;
+  }
+  let hi = 0;
+  try { hi = parseInt(localStorage.getItem('galaga-scope-hi'), 10) || 0; } catch (e) {}
+  const saveHi = () => { try { localStorage.setItem('galaga-scope-hi', String(x.web_hi())); } catch (e) {} };
+  x.web_init(hi, parseInt(q.get('stage'), 10) || 0, q.has('god') ? 1 : 0, q.has('autoplay') ? 1 : 0, 160, 52);
+
+  // ---- the signal: the segments as samples (x, y pairs in -1..1), the beam walks every line, and jumps between them ----
+  function trace(s, n) {
+    const out = [];
+    let cx = 2047.5, cy = 2047.5;
+    const put = (px, py) => out.push(px / 2047.5 - 1, py / 2047.5 - 1);
+    const walk = (x1, y1, step) => {
+      const d = Math.hypot(x1 - cx, y1 - cy), k = Math.max(2, Math.ceil(d / step));
+      for (let i = 1; i <= k; i++) put(cx + (x1 - cx) * i / k, cy + (y1 - cy) * i / k);
+      cx = x1; cy = y1;
+    };
+    for (let i = 0; i < n; i++) {
+      const o = i * 4;
+      walk(s[o], s[o + 1], SPEED * 6);                     // the jump to the start of the line: fast
+      walk(s[o + 2], s[o + 3], SPEED);
+    }
+    return Float32Array.from(out);
+  }
+
+  // ---- the software scope: a phosphor that fades, lines in bright green ----
+  const sc = document.getElementById('scope'), g = sc.getContext('2d');
+  const wv = document.getElementById('wave'), w = wv.getContext('2d');
+  let segs = new Int16Array(0), nseg = 0, samples = new Float32Array(2);
+  function drawScope(retrace) {
+    const S = sc.width / 4096;
+    g.globalCompositeOperation = 'source-over';
+    g.fillStyle = 'rgba(0, 21, 10, 0.30)';                 // the phosphor fades
+    g.fillRect(0, 0, sc.width, sc.height);
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.globalCompositeOperation = 'lighter';
+    if (retrace) {
+      g.strokeStyle = 'rgba(80, 130, 255, 0.35)'; g.lineWidth = 1; g.shadowBlur = 0;
+      g.beginPath();
+      let px = 2047.5, py = 2047.5;
+      for (let i = 0; i < nseg; i++) {
+        const o = i * 4;
+        g.moveTo(px * S, (4095 - py) * S); g.lineTo(segs[o] * S, (4095 - segs[o + 1]) * S);
+        px = segs[o + 2]; py = segs[o + 3];
+      }
+      g.stroke();
+    }
+    g.shadowColor = '#3f8'; g.shadowBlur = 10; g.strokeStyle = '#7fb'; g.lineWidth = 2.4;
+    g.beginPath();
+    for (let i = 0; i < nseg; i++) {
+      const o = i * 4;
+      g.moveTo(segs[o] * S, (4095 - segs[o + 1]) * S); g.lineTo(segs[o + 2] * S, (4095 - segs[o + 3]) * S);
+    }
+    g.stroke();
+    g.shadowBlur = 0;
+  }
+  function drawWave() {
+    const W = wv.width, H = wv.height, n = Math.min(samples.length / 2, 960);
+    w.fillStyle = '#00150a'; w.fillRect(0, 0, W, H);
+    w.strokeStyle = '#12351f'; w.lineWidth = 1;
+    w.beginPath(); w.moveTo(0, H / 4); w.lineTo(W, H / 4); w.moveTo(0, 3 * H / 4); w.lineTo(W, 3 * H / 4); w.stroke();
+    for (const [c, col, mid] of [[0, '#6f9', H / 4], [1, '#9cf', 3 * H / 4]]) {
+      w.strokeStyle = col; w.lineWidth = 1.2; w.beginPath();
+      for (let i = 0; i < n; i++) {
+        const px = i * W / 960, py = mid - samples[i * 2 + c] * H / 4.4;
+        i ? w.lineTo(px, py) : w.moveTo(px, py);
+      }
+      w.stroke();
+    }
+    document.getElementById('info').textContent = nseg + ' lines, ' + (samples.length / 2) + ' samples: one picture every ' +
+      (samples.length / 2 / SR * 1000).toFixed(1) + ' ms (' + Math.min(99, SR / (samples.length / 2)).toFixed(0) + ' Hz). L (X) green, R (Y) blue.';
+  }
+
+  // ---- audio: the picture (worklet) and the sound effects (oscillators) ----
+  let ac = null, picGain = null, sfxGain = null, node = null, xyOn = q.has('xy'), retrace = false;
+  const WORKLET = `class S extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(2);this.n=null;this.i=0;
+    this.port.onmessage=e=>{this.n=e.data}}
+    process(_,o){const L=o[0][0],R=o[0][1];for(let k=0;k<L.length;k++){if(this.i>=this.b.length-1){this.i=0;if(this.n){this.b=this.n;this.n=null}}
+    L[k]=this.b[this.i++]*.9;R[k]=this.b[this.i++]*.9}return true}}registerProcessor('scope',S)`;
+  async function startAudio() {
+    if (ac) { await ac.resume(); return; }
+    ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
+    await ac.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+    node = new AudioWorkletNode(ac, 'scope', { outputChannelCount: [2] });
+    picGain = ac.createGain(); sfxGain = ac.createGain();
+    node.connect(picGain).connect(ac.destination);
+    sfxGain.connect(ac.destination);
+    setMode();
+    window.__galaga.audio = ac;
+  }
+  function setMode() {
+    if (!ac) return;
+    picGain.gain.value = xyOn ? 1 : 0;                     // the stereo pair carries the picture, or the sound effects, not both
+    sfxGain.gain.value = xyOn ? 0 : 1;
+  }
+  const NOTES = {
+    32: [[392, 7], [523, 7], [659, 7], [784, 7], [1047, 30]], 64: [[523, 12], [440, 12], [349, 12], [262, 40]],
+    128: [[523, 6], [440, 6], [349, 6], [294, 6], [262, 20]], 256: [[523, 5], [659, 5], [784, 5], [1047, 5], [784, 5], [1047, 20]],
+    512: [[784, 4], [1047, 4], [784, 4], [1047, 4], [784, 4], [1047, 16]],
+  };
+  let noiseBuf = null;
+  function tone(type, f0, f1, amp, dur, when = 0) {
+    const o = ac.createOscillator(), a = ac.createGain(), t = ac.currentTime + when;
+    o.type = type; o.frequency.setValueAtTime(f0, t); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    a.gain.setValueAtTime(amp, t); a.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(a).connect(sfxGain); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(amp, dur, rate) {
+    if (!noiseBuf) { noiseBuf = ac.createBuffer(1, SR, SR); const d = noiseBuf.getChannelData(0); for (let i = 0; i < SR; i++) d[i] = Math.random() * 2 - 1; }
+    const s = ac.createBufferSource(), a = ac.createGain(), t = ac.currentTime;
+    s.buffer = noiseBuf; s.playbackRate.value = rate / 8000; s.loop = true;
+    a.gain.setValueAtTime(amp, t); a.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(a).connect(sfxGain); s.start(t); s.stop(t + dur + 0.02);
+  }
+  function sfx(e) {
+    if (!ac || xyOn || !e) return;
+    if (e & 1) tone('square', 1200, 900, 0.10, 0.09);
+    if (e & 4) tone('triangle', 360, 300, 0.18, 0.28);
+    if (e & 2) noise(0.25, 0.3, 4810);
+    if (e & 8) noise(0.35, 0.8, 1800);
+    if (e & 16) tone('sawtooth', 810, 120, 0.06, 0.46);
+    for (const k in NOTES) if (e & k) { let t = 0; for (const [f, n] of NOTES[k]) { tone('square', f, f, 0.07, n / 50, t); t += n / 50; } }
+  }
+  const btn = (id, f) => document.getElementById(id).addEventListener('click', f);
+  btn('snd', async e => {
+    const on = e.target.getAttribute('aria-pressed') !== 'true';
+    if (on) { await startAudio(); } else if (ac) { await ac.suspend(); }
+    e.target.setAttribute('aria-pressed', on); e.target.textContent = 'Sound: ' + (on ? 'on' : 'off');
+  });
+  btn('xy', e => {
+    xyOn = !xyOn; e.target.setAttribute('aria-pressed', xyOn); e.target.textContent = 'XY out: ' + (xyOn ? 'on' : 'off'); setMode();
+  });
+  btn('retrace', e => {
+    retrace = !retrace; e.target.setAttribute('aria-pressed', retrace); e.target.textContent = 'Retrace: ' + (retrace ? 'on' : 'off');
+  });
+  if (xyOn) { const b = document.getElementById('xy'); b.setAttribute('aria-pressed', 'true'); b.textContent = 'XY out: on'; }
+
+  // ---- keys: held ones (left, right) and pulses (one tick for every press, repeats too) ----
+  const HELD = { ArrowLeft: K_LEFT, KeyA: K_LEFT, ArrowRight: K_RIGHT, KeyD: K_RIGHT };
+  const PULSE = { Space: K_FIRE, KeyK: K_FIRE, Enter: K_FIRE, ArrowUp: K_FIRE, KeyP: K_PAUSE, KeyQ: K_QUIT, Escape: K_QUIT };
+  let held = 0, pulse = 0;
+  window.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.code in HELD) { held |= HELD[e.code]; e.preventDefault(); }
+    else if (e.code in PULSE) { if (!(PULSE[e.code] !== K_FIRE && e.repeat)) pulse |= PULSE[e.code]; e.preventDefault(); }
+  });
+  window.addEventListener('keyup', e => { if (e.code in HELD) { held &= ~HELD[e.code]; e.preventDefault(); } });
+  window.addEventListener('blur', () => { held = 0; });
+  window.addEventListener('pagehide', saveHi);
+
+  // ---- 50 ticks a second; the picture is made after the ticks ----
+  let last = performance.now(), acc = 0, snd = 0;
+  window.__galaga = { x, ticks: 0, samples: () => samples, segments: () => nseg };   // for the tests
+  function frame(now) {
+    acc = Math.min(acc + now - last, 100);
+    last = now;
+    let ran = false;
+    while (acc >= 20) {
+      const flags = x.web_tick(held | pulse);
+      pulse = 0;
+      if (flags & 1) saveHi();
+      acc -= 20;
+      ran = true;
+      window.__galaga.ticks++;
+    }
+    if (ran) {
+      const p = x.web_lines();
+      nseg = x.web_line_count();
+      segs = new Int16Array(x.memory.buffer, p, nseg * 4).slice();
+      samples = trace(segs, nseg);
+      sfx(x.web_snd());
+      if (node) node.port.postMessage(samples.slice());
+    }
+    drawScope(retrace);
+    drawWave();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

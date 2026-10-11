@@ -5,6 +5,7 @@ pub mod arcade_data;
 pub mod art;
 pub mod game;
 pub mod render;
+pub mod scope;
 #[cfg(feature = "terminal")]
 pub mod hiscore;
 #[cfg(feature = "terminal")]

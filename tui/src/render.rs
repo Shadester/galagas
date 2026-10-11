@@ -258,7 +258,8 @@ impl Renderer {
             let b = [230u32, 180, 130, 90][layer];
             let tw = 70 + ((frame as u32 / 6 + i * 7) % 4) * 10; // twinkle
             let v = (b * tw / 100) as u8;
-            let col = if i % 5 == 0 { [v, v * 3 / 4, v / 3] } else if i % 7 == 0 { [v / 2, v * 3 / 4, v] } else { [v, v, v] };
+            let v34 = (v as u16 * 3 / 4) as u8;
+            let col = if i % 5 == 0 { [v, v34, v / 3] } else if i % 7 == 0 { [v / 2, v34, v] } else { [v, v, v] };
             cv.set(x, y, col);
         }
     }

@@ -3,6 +3,7 @@
 //! The functions are ordinary Rust, so the tests call them natively.
 use crate::game::*;
 use crate::render::*;
+use crate::scope;
 use std::cell::RefCell;
 
 /// Keys for `web_tick`: held keys, and one-tick pulses (a key press) for fire, pause and quit.
@@ -24,6 +25,9 @@ struct Web {
     start_stage: i32,
     god: bool,
     autoplay: bool,
+    snd: i32,        // the sound events since the page asked (`web_snd`)
+    segs: Vec<scope::Seg>,
+    lines: Vec<i16>, // the scope picture for `web_lines`: x0 y0 x1 y1 for each segment
 }
 
 thread_local! {
@@ -47,6 +51,9 @@ pub extern "C" fn web_init(hi: i32, start_stage: i32, god: i32, autoplay: i32, c
         start_stage,
         god: god != 0,
         autoplay: autoplay != 0,
+        snd: 0,
+        segs: Vec::new(),
+        lines: Vec::new(),
     };
     WEB.with(|x| *x.borrow_mut() = Some(w));
 }
@@ -78,6 +85,7 @@ pub extern "C" fn web_tick(keys: u32) -> u32 {
         if w.game.save_req != 0 {
             flags |= F_SAVE;
         }
+        w.snd |= w.game.snd;
         w.game.snd = 0;
         w.game.save_req = 0;
         flags
@@ -104,6 +112,30 @@ pub extern "C" fn web_draw() -> *const u8 {
         w.buf.as_ptr()
     })
     .unwrap_or(std::ptr::null())
+}
+
+/// The scope picture of the game now (docs/scope): returns the address of the segments, 4 i16 for each (x0 y0 x1 y1, in a box 0..4095, y up).
+/// `web_line_count` is the number of segments. The address is good until the next call.
+#[no_mangle]
+pub extern "C" fn web_lines() -> *const i16 {
+    with(|w| {
+        scope::build(&w.game, &mut w.segs);
+        w.lines.clear();
+        w.lines.extend(w.segs.iter().flatten());
+        w.lines.as_ptr()
+    })
+    .unwrap_or(std::ptr::null())
+}
+
+#[no_mangle]
+pub extern "C" fn web_line_count() -> u32 {
+    with(|w| w.segs.len() as u32).unwrap_or(0)
+}
+
+/// The sound events (SND_* and JG_* bits of game.rs) since the last call; the call clears them.
+#[no_mangle]
+pub extern "C" fn web_snd() -> u32 {
+    with(|w| std::mem::take(&mut w.snd) as u32).unwrap_or(0)
 }
 
 /// The number of cells `web_draw` fills.
@@ -152,6 +184,13 @@ mod tests {
         assert_eq!(web_checksum(), checksum(&g));
         assert!(g.score > 0);
         assert_eq!(web_cells(), cols * rows);
+        let p = web_lines();
+        let n = web_line_count() as usize;
+        assert!(n > 20 && !p.is_null());
+        let l = unsafe { std::slice::from_raw_parts(p, n * 4) };
+        assert!(l.iter().all(|&c| (0..=4095).contains(&c)));
+        web_snd(); // the events of 4000 ticks; the call clears them
+        assert_eq!(web_snd(), 0);
         let p = web_draw();
         let cells = unsafe { std::slice::from_raw_parts(p, (cols * rows * 12) as usize) };
         assert!(cells.chunks(12).any(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]) == '▀' as u32 && c[4..7] != [0, 0, 0]));
