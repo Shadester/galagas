@@ -21,6 +21,8 @@ cargo test --release
   draws the cells on a canvas. Build the library with `--no-default-features` (the feature `terminal` is `crossterm`). `tests/test_web.py` needs playwright
   (the scratchpad venv has it). The page picks the biggest cells (up to 12 x 24 CSS pixels) that still give the biggest picture (160 x 52 cells).
   After a change of the rules or the renderer: `tools/build_web.sh`, run the tests, commit `docs/tui/galaga.wasm` too.
+- The oscilloscope version (`../scope`, page `docs/scope/index.html`) uses the same wasm file: `build_web.sh` copies it to `docs/scope/galaga.wasm` (committed). `src/scope.rs` makes the line segments
+  (`web_lines`), `tests/test_scope.py` checks the page. The vector outlines follow the sprites; keep a frame under `scope::BUDGET` segments (a test checks it).
 - Never push without the user's OK (global rule).
 
 ## How it works

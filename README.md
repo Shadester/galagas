@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <b>One arcade shooter, six machines and a terminal.</b><br>
-  Galaga clones for the Commodore 64, the PlayStation Portable, the Atari Lynx, the Thumby Color, PICO-8, the Commodore Amiga and the terminal, written from the same game design.
+  <b>One arcade shooter, six machines, a terminal and an oscilloscope.</b><br>
+  Galaga clones for the Commodore 64, the PlayStation Portable, the Atari Lynx, the Thumby Color, PICO-8, the Commodore Amiga, the terminal and an oscilloscope, written from the same game design.
 </p>
 
 <p align="center">
@@ -15,7 +15,8 @@
   <a href="https://shadester.github.io/galagas/lynx/portrait.html"><b>▶ Atari Lynx Portrait</b></a> ·
   <a href="https://shadester.github.io/galagas/psp/"><b>▶ PSP</b></a> ·
   <a href="https://vamigaweb.github.io/#AROS=true#https://raw.githubusercontent.com/Shadester/galagas/master/amiga/docs/galaga.adz"><b>▶ Amiga</b></a> ·
-  <a href="https://shadester.github.io/galagas/tui/"><b>▶ Terminal</b></a>
+  <a href="https://shadester.github.io/galagas/tui/"><b>▶ Terminal</b></a> ·
+  <a href="https://shadester.github.io/galagas/scope/"><b>▶ Oscilloscope</b></a>
 </p>
 
 <table>
@@ -90,11 +91,20 @@
       translation of <code>psp/game.c</code>, and a test compares every tick with the C original.
     </td>
   </tr>
+  <tr>
+    <td width="360"><a href="scope/"><img src="scope/docs/gameplay.gif" width="340" alt="Oscilloscope"></a></td>
+    <td>
+      <h3><a href="scope/">Oscilloscope</a></h3>
+      <i>Rust (WebAssembly) and Web Audio</i><br><br>
+      The game drawn as vector lines. The picture is also a sound: the left channel is X and the right channel is Y.
+      Put a real oscilloscope in X/Y mode on the headphone jack and it shows the game. A software scope on the page shows the same picture.
+    </td>
+  </tr>
 </table>
 
 All of them have the same game: aliens that fly in and dive, bosses that take two hits and capture your ship, a dual fighter when you rescue it, challenge stages with a perfect-clear bonus, and difficulty that rises every stage.
 
-The PSP, Thumby Color, PICO-8, Amiga and Atari Lynx games play by the rules of the arcade Galaga: 40 aliens, the arcade fly-in waves and flight paths, the dive scheduler with escorts, aimed bombs, a formation that swings and then breathes, and challenge stages of five waves. The C64 game plays the same rules with 32 aliens on its own fly-in paths (its 8 hardware sprites cannot show the arcade's rows of 10). The graphics and the sound are our own. The numbers (paths, wave lists, timers) come from a model of the arcade program ([tomcoolpxl/cool8-cpu](https://github.com/tomcoolpxl/cool8-cpu), MIT licence); [ARCADE.md](ARCADE.md) compares our rules with the arcade, rule by rule.
+The PSP, Thumby Color, PICO-8, Amiga, Atari Lynx, terminal and oscilloscope games play by the rules of the arcade Galaga: 40 aliens, the arcade fly-in waves and flight paths, the dive scheduler with escorts, aimed bombs, a formation that swings and then breathes, and challenge stages of five waves. The C64 game plays the same rules with 32 aliens on its own fly-in paths (its 8 hardware sprites cannot show the arcade's rows of 10). The graphics and the sound are our own. The numbers (paths, wave lists, timers) come from a model of the arcade program ([tomcoolpxl/cool8-cpu](https://github.com/tomcoolpxl/cool8-cpu), MIT licence); [ARCADE.md](ARCADE.md) compares our rules with the arcade, rule by rule.
 
 `psp/game.c` is the reference for the rules of all the games. The Thumby Color, PICO-8 and Amiga versions run next to it in a test, tick by tick. `tools/compare_6502.py` compares the Lynx game and the C64 game with it at checkpoints; for the C64 it is built with `-DRULES_ARCADE32` (32 aliens).
 Each directory has its own README with build instructions.
