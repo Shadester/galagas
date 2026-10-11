@@ -16,7 +16,10 @@ Put an oscilloscope in X/Y mode on the headphone jack, and it shows the game. A 
   A frame of 200 lines needs about 800 samples, so the picture repeats about 60 times a second. A busier frame takes longer, and the picture flickers a little. This is the same limit a real vector display has.
 - **XY out** starts the audio: the stereo signal is the picture, and nothing else (there are no sound effects: a scope output cannot also carry them). With XY out off, the page is silent. A browser starts audio only after a click or a key, so with `?xy` it starts at the first one.
   Through speakers the signal sounds like a harsh buzz (the picture repeats about 60 times a second).
-- **Retrace** shows the jumps between lines. A scope without a blanking input draws them too: the same beam and the same colour, but dimmer, because the beam moves faster there (about 6 times as fast, so about 1/6 as bright).
+- **The software scope is a model of a real one.** It reads only the signal (the samples), never the line list of the game. The beam follows the samples in real time (48,000 a second),
+  with a limited bandwidth (it covers 85% of a step in one sample, so corners round a little). It draws a line as bright as it is slow, because the same energy goes over a longer path.
+  Nothing blanks the beam, so the jumps between lines show too, dim because the beam is about 6 times as fast there. The phosphor decays over time (the **Persistence** knob, 30 ms to begin with),
+  and **Brightness** scales the beam. When a frame has many lines the picture repeats more slowly and flickers, as on a real scope.
 - The panel on the right shows the real samples of one frame: L (X) in green and R (Y) in blue.
 
 ## Use a real oscilloscope

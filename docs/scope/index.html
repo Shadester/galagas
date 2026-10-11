@@ -13,6 +13,8 @@
   #side { width: 330px; max-width: 96vw; }
   #side h1 { font-size: 16px; margin: 0 0 6px; color: #7f9; font-weight: 600; letter-spacing: .04em; }
   #wave { width: 100%; height: 150px; display: block; background: #00150a; border-radius: 6px; margin: 8px 0; }
+  label { display: inline-block; margin: 4px 10px 2px 0; }
+  input[type=range] { width: 110px; vertical-align: middle; accent-color: #3c7; }
   button { background: #12261a; color: #9fb; border: 1px solid #2c4a37; border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; margin: 2px 4px 2px 0; }
   button[aria-pressed="true"] { background: #1f5a38; color: #dfe; }
   .row { margin: 6px 0; }
@@ -25,12 +27,13 @@
 <div id="scopebox"><canvas id="scope" width="900" height="900"></canvas></div>
 <div id="side">
   <h1>GALAGA · OSCILLOSCOPE</h1>
-  <div class="row">The game is drawn as lines. The picture is also a sound: <b>left channel = X, right channel = Y</b>. Put a real oscilloscope in X/Y mode on the headphone jack and it shows the game.</div>
+  <div class="row">The game is drawn as lines. The picture is also a sound: <b>left channel = X, right channel = Y</b>. Put a real oscilloscope in X/Y mode on the headphone jack and it shows the game. The scope on this page is a model of one: it sees only that signal (the waveforms below), never the game.</div>
   <canvas id="wave" width="660" height="300"></canvas>
   <div class="dim" id="info">L (X) in green, R (Y) in pale blue: one video frame of the signal.</div>
   <div class="row">
     <button id="xy" aria-pressed="false" title="The audio output is the picture: left channel X, right channel Y. For a real oscilloscope. Off: no sound.">XY out: off</button>
-    <button id="retrace" aria-pressed="false" title="Show the jumps between lines: a scope without a blanking input draws them too, dimmer because the beam moves fast.">Retrace: off</button>
+    <label title="Brightness of the beam">Brightness <input id="bright" type="range" min="0.3" max="3" step="0.05" value="1"></label>
+    <label title="How long the phosphor glows (ms)">Persistence <input id="persist" type="range" min="8" max="80" step="1" value="30"></label>
   </div>
   <div class="row dim">Arrow keys or A / D move, Space fires, P pauses.<br>
     <b>XY out</b> plays the picture as sound (left = X, right = Y) for a real scope: turn the volume up, use DC coupling, and see the <a href="https://github.com/Shadester/galagas/tree/master/scope">notes</a>. It sounds like a harsh buzz. With XY out off, the page is silent.<br>
@@ -39,7 +42,7 @@
 <script>
 (async () => {
   const K_LEFT = 1, K_RIGHT = 2, K_FIRE = 4, K_PAUSE = 8, K_QUIT = 16;
-  const SR = 48000, SPEED = 160;                           // 48 kHz; a line of the picture takes one sample for every SPEED box units
+  const SR = 48000, SPEED = 130;                           // 48 kHz; a line of the picture takes one sample for every SPEED box units
   const q = new URLSearchParams(location.search);          // ?autoplay  ?god  ?stage=3  ?xy
   let x;
   try {
@@ -71,38 +74,47 @@
     return Float32Array.from(out);
   }
 
-  // ---- the software scope: a phosphor that fades, lines in bright green ----
+  // ---- the software scope: a model of a CRT in X/Y mode. It sees only the signal (the samples), never the line list. ----
+  // The beam follows the samples in real time (48,000 a second). It has a limited bandwidth (a sound card and a scope amplifier round the
+  // corners), it draws a line as bright as it is slow (the same energy over a longer path), and the phosphor decays over time.
+  // The jumps between lines are drawn too, because nothing blanks the beam: they are dim because the beam is fast there.
   const sc = document.getElementById('scope'), g = sc.getContext('2d');
   const wv = document.getElementById('wave'), w = wv.getContext('2d');
-  let segs = new Int16Array(0), nseg = 0, samples = new Float32Array(2);
-  function drawScope(retrace) {
-    const S = sc.width / 4096;
+  let segs = new Int16Array(0), nseg = 0, samples = new Float32Array(2), nextSamples = null;
+  const knob = { bright: 1, persist: 30 };                 // brightness (x), phosphor decay time (ms)
+  const beam = { i: 0, x: 0, y: 0, last: performance.now() };
+  const BW = 0.85;                                         // the share of a step the beam covers in one sample: the bandwidth
+  const SPOT = 7;                                          // the spot size in canvas pixels: a line shorter than this is not dimmer
+  function advance(now) {
+    const dtMs = Math.min(now - beam.last, 60);
+    beam.last = now;
+    const W = sc.width, H = sc.height;
     g.globalCompositeOperation = 'source-over';
-    g.fillStyle = 'rgba(0, 21, 10, 0.30)';                 // the phosphor fades
-    g.fillRect(0, 0, sc.width, sc.height);
-    g.lineCap = 'round';
-    g.lineJoin = 'round';
+    g.fillStyle = 'rgba(0, 21, 10, ' + (1 - Math.exp(-dtMs / knob.persist)).toFixed(3) + ')';   // the phosphor fades
+    g.fillRect(0, 0, W, H);
     g.globalCompositeOperation = 'lighter';
-    g.shadowColor = '#3f8'; g.shadowBlur = 10; g.lineWidth = 2.4;
-    if (retrace) {                                         // the jumps between lines: the same beam, 1/6 as bright (it moves 6 times as fast)
-      g.strokeStyle = 'rgba(127, 255, 187, 0.17)';
-      g.beginPath();
-      let px = 2047.5, py = 2047.5;
-      for (let i = 0; i < nseg; i++) {
-        const o = i * 4;
-        g.moveTo(px * S, (4095 - py) * S); g.lineTo(segs[o] * S, (4095 - segs[o + 1]) * S);
-        px = segs[o + 2]; py = segs[o + 3];
-      }
-      g.stroke();
+    g.lineCap = 'round';
+    const n = Math.min(Math.round(SR * dtMs / 1000), 3000);
+    const LV = 10, paths = Array.from({ length: LV }, () => new Path2D());     // the lines, by brightness: one stroke for each level
+    let px = beam.x, py = beam.y;
+    for (let k = 0; k < n; k++) {
+      if (beam.i >= samples.length - 1) { beam.i = 0; if (nextSamples) { samples = nextSamples; nextSamples = null; } }
+      const tx = (samples[beam.i++] + 1) / 2 * W, ty = (1 - samples[beam.i++]) / 2 * H;     // where the signal says the beam should be
+      const x = px + (tx - px) * BW, y = py + (ty - py) * BW;                                 // the beam gets there only in part
+      const len = Math.hypot(x - px, y - py);
+      const a = Math.min(1, 0.55 * knob.bright * SPOT / Math.max(len, SPOT));               // as bright as it is slow
+      const lv = Math.min(LV - 1, Math.floor(a * LV));
+      paths[lv].moveTo(px, py); paths[lv].lineTo(x, y);
+      px = x; py = y;
     }
+    beam.x = px; beam.y = py;
     g.strokeStyle = '#7fb';
-    g.beginPath();
-    for (let i = 0; i < nseg; i++) {
-      const o = i * 4;
-      g.moveTo(segs[o] * S, (4095 - segs[o + 1]) * S); g.lineTo(segs[o + 2] * S, (4095 - segs[o + 3]) * S);
+    for (let lv = 0; lv < LV; lv++) {
+      const a = (lv + 0.5) / LV;
+      g.globalAlpha = a * 0.28; g.lineWidth = 7; g.stroke(paths[lv]);                        // the glow of the glass
+      g.globalAlpha = a; g.lineWidth = 2.2; g.stroke(paths[lv]);
     }
-    g.stroke();
-    g.shadowBlur = 0;
+    g.globalAlpha = 1;
   }
   function drawWave() {
     const W = wv.width, H = wv.height, n = Math.min(samples.length / 2, 960);
@@ -122,7 +134,7 @@
   }
 
   // ---- audio: the picture, as a stereo signal (an audio worklet loops the samples of the last frame). Only with XY out on. ----
-  let ac = null, picGain = null, node = null, xyOn = q.has('xy'), retrace = false;
+  let ac = null, picGain = null, node = null, xyOn = q.has('xy');
   const WORKLET = `class S extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(2);this.n=null;this.i=0;
     this.port.onmessage=e=>{this.n=e.data}}
     process(_,o){const L=o[0][0],R=o[0][1];for(let k=0;k<L.length;k++){if(this.i>=this.b.length-1){this.i=0;if(this.n){this.b=this.n;this.n=null}}
@@ -147,9 +159,8 @@
   btn('xy', e => {
     xyOn = !xyOn; e.target.setAttribute('aria-pressed', xyOn); e.target.textContent = 'XY out: ' + (xyOn ? 'on' : 'off'); setMode();
   });
-  btn('retrace', e => {
-    retrace = !retrace; e.target.setAttribute('aria-pressed', retrace); e.target.textContent = 'Retrace: ' + (retrace ? 'on' : 'off');
-  });
+  document.getElementById('bright').addEventListener('input', e => { knob.bright = +e.target.value; });
+  document.getElementById('persist').addEventListener('input', e => { knob.persist = +e.target.value; });
   if (xyOn) {
     const b = document.getElementById('xy'); b.setAttribute('aria-pressed', 'true'); b.textContent = 'XY out: on';
     const first = () => { removeEventListener('keydown', first); removeEventListener('pointerdown', first); if (xyOn) setMode(); };
@@ -188,10 +199,11 @@
       const p = x.web_lines();
       nseg = x.web_line_count();
       segs = new Int16Array(x.memory.buffer, p, nseg * 4).slice();
-      samples = trace(segs, nseg);
-      if (node) node.port.postMessage(samples.slice());
+      const fresh = trace(segs, nseg);
+      if (samples.length < 4) samples = fresh; else nextSamples = fresh;     // the beam switches at the end of its loop, like the audio
+      if (node) node.port.postMessage(fresh.slice());
     }
-    drawScope(retrace);
+    advance(now);
     drawWave();
     requestAnimationFrame(frame);
   }

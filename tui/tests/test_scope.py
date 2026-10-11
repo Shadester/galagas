@@ -52,7 +52,10 @@ with sync_playwright() as p:
     check('the game runs', True)
     n = page.evaluate('window.__galaga.segments()')
     check('the picture has lines, and not too many', 60 < n <= 480, n)
-    check('the software scope draws bright lines', lit(page) > 500, lit(page))
+    check('the software scope draws bright lines', lit(page) > 400, lit(page))
+    dim = page.evaluate("""() => { const c = document.getElementById('scope'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 1] > 40 && d[i + 1] <= 150) n++; return n; }""")
+    check('the beam leaves a dim glow too (retrace jumps, phosphor)', dim > 2000, dim)
     s = page.evaluate('Array.from(window.__galaga.samples())')
     check('the samples are in range', len(s) > 100 and all(-1.0001 <= v <= 1.0001 for v in s), len(s))
     check('the picture fills the box (X and Y both move)', max(s[0::2]) - min(s[0::2]) > 0.5 and max(s[1::2]) - min(s[1::2]) > 0.3)
@@ -66,8 +69,6 @@ with sync_playwright() as p:
         await new Promise(r => setTimeout(r, 600)); const d = new Float32Array(a.fftSize); a.getFloatTimeDomainData(d);
         let s = 0; for (const v of d) s += v * v; return { rms: Math.sqrt(s / d.length), gain: g.pic.gain.value }; }""")
     check('XY out carries the picture (rms of the output)', level['rms'] > 0.05 and level['gain'] == 1, level)
-    page.click('#retrace')
-    check('retrace on', page.get_attribute('#retrace', 'aria-pressed') == 'true')
     page.click('#xy')
     page.wait_for_function('window.__galaga.audio.state === "suspended"', timeout=10000)
     check('XY out off: no sound', page.evaluate('window.__galaga.pic.gain.value') == 0)
