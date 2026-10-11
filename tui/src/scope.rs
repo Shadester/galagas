@@ -182,8 +182,55 @@ fn number(n: i32) -> String {
     n.max(0).to_string()
 }
 
-/// Make the line segments of the picture for the state of the game. `out` is cleared first.
+/// The length of all the jumps of the beam between the lines (the beam starts and ends in the middle of the box).
+pub fn jump_length(v: &[Seg]) -> f32 {
+    let (mut x, mut y) = (2047.5f32, 2047.5f32);
+    let mut sum = 0.0;
+    for s in v {
+        sum += ((s[0] as f32 - x).powi(2) + (s[1] as f32 - y).powi(2)).sqrt();
+        x = s[2] as f32;
+        y = s[3] as f32;
+    }
+    sum + ((x - 2047.5).powi(2) + (y - 2047.5).powi(2)).sqrt()
+}
+
+/// Put the lines in an order that makes the beam jump less: from the end of a line, take the line whose start (or end: the line is then turned round) is nearest.
+/// A line that goes on where the last one ended costs no jump, so strokes of one drawing stay together. About `n * n / 2` distance tests for n lines.
+fn order(v: &mut Vec<Seg>) {
+    let n = v.len();
+    let mut done = vec![false; n];
+    let mut out = Vec::with_capacity(n);
+    let (mut x, mut y) = (2047.5f32, 2047.5f32);
+    let d2 = |ax: f32, ay: f32, bx: i16, by: i16| (ax - bx as f32).powi(2) + (ay - by as f32).powi(2);
+    for _ in 0..n {
+        let (mut best, mut flip, mut bd) = (0, false, f32::MAX);
+        for (i, s) in v.iter().enumerate().filter(|(i, _)| !done[*i]) {
+            let (a, b) = (d2(x, y, s[0], s[1]), d2(x, y, s[2], s[3]));
+            if a < bd {
+                (best, flip, bd) = (i, false, a);
+            }
+            if b < bd {
+                (best, flip, bd) = (i, true, b);
+            }
+        }
+        done[best] = true;
+        let s = v[best];
+        let s = if flip { [s[2], s[3], s[0], s[1]] } else { s };
+        x = s[2] as f32;
+        y = s[3] as f32;
+        out.push(s);
+    }
+    *v = out;
+}
+
+/// Make the line segments of the picture for the state of the game, in an order that is short for the beam. `out` is cleared first.
 pub fn build(g: &Game, out: &mut Vec<Seg>) {
+    build_unordered(g, out);
+    order(out);
+}
+
+/// The same lines in the order of the drawing code (the HUD, the beam, the aliens by slot, the shots, the ship, the text).
+pub fn build_unordered(g: &Game, out: &mut Vec<Seg>) {
     out.clear();
     let mut p = Pen { out };
     if g.state == S_TITLE {
@@ -300,6 +347,33 @@ mod tests {
             sum += v.len();
         }
         (g, most, sum / ticks as usize)
+    }
+
+    #[test]
+    fn the_order_is_shorter_and_keeps_every_line() {
+        let mut g = Game::new(1234);
+        let (mut before, mut after) = (0.0, 0.0);
+        let (mut a, mut b) = (Vec::new(), Vec::new());
+        for t in 0..4000 {
+            g.invuln = 100;
+            let inp = game_autoplay(&g);
+            g.tick(&inp, 0);
+            g.snd = 0;
+            if t % 20 != 0 || g.state != S_PLAY {
+                continue;
+            }
+            build_unordered(&g, &mut a);
+            build(&g, &mut b);
+            assert_eq!(a.len(), b.len());
+            let key = |s: &Seg| if (s[0], s[1]) <= (s[2], s[3]) { *s } else { [s[2], s[3], s[0], s[1]] };
+            let (mut ka, mut kb): (Vec<Seg>, Vec<Seg>) = (a.iter().map(key).collect(), b.iter().map(key).collect());
+            ka.sort();
+            kb.sort();
+            assert_eq!(ka, kb, "the order must not change the picture");
+            before += jump_length(&a);
+            after += jump_length(&b);
+        }
+        assert!(before > 0.0 && after < before * 0.6, "jumps: {before} before, {after} after");
     }
 
     #[test]

@@ -15,7 +15,12 @@ fn main() {
         g.snd = 0;
     }
     let mut v = Vec::new();
+    galaga_tui::scope::build_unordered(&g, &mut v);
+    let before = galaga_tui::scope::jump_length(&v);
+    let t0 = std::time::Instant::now();
     build(&g, &mut v);
+    let us = t0.elapsed().as_micros();
+    println!("jumps {:.0} -> {:.0} box units ({} lines, {} us to order and build)", before, galaga_tui::scope::jump_length(&v), v.len(), us);
     let mut s = String::from("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4096 4096' width='900' height='900'><rect width='4096' height='4096' fill='#001408'/><g stroke='#4f8' stroke-width='9' stroke-linecap='round'>");
     for l in &v {
         s += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}'/>", l[0], 4095 - l[1], l[2], 4095 - l[3]);
