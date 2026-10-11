@@ -17,9 +17,15 @@ const HUD: f32 = 26.0; // game pixels above the play area (the numbers)
 
 struct Pen<'a> {
     out: &'a mut Vec<Seg>,
+    ids: &'a mut Vec<u16>, // the drawing (object) of each segment: a new number for every alien, shot, digit ...
+    obj: u16,
 }
 
 impl Pen<'_> {
+    fn next(&mut self) {
+        self.obj += 1;
+    }
+
     /// A line in game pixels of the play area (0,0 = top left, 320 x 200); the HUD is at y < 0.
     fn line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32) {
         let m = |x: f32, y: f32| {
@@ -30,6 +36,7 @@ impl Pen<'_> {
         let (a, b) = (m(x0, y0), m(x1, y1));
         if a != b {
             self.out.push([a.0, a.1, b.0, b.1]);
+            self.ids.push(self.obj);
         }
     }
 
@@ -51,11 +58,13 @@ impl Pen<'_> {
     }
 
     fn ship(&mut self, cx: f32, cy: f32, s: f32) {
+        self.next();
         const P: [(f32, f32); 10] = [(0.0, -9.0), (3.0, -1.0), (9.0, 6.0), (9.0, 9.0), (3.0, 6.0), (0.0, 8.0), (-3.0, 6.0), (-9.0, 9.0), (-9.0, 6.0), (-3.0, -1.0)];
         self.poly(cx, cy, s, &P, true);
     }
 
     fn bee(&mut self, cx: f32, cy: f32, flap: i32) {
+        self.next();
         self.poly(cx, cy, 1.0, &[(-3.0, -6.0), (3.0, -6.0), (5.0, 0.0), (0.0, 8.0), (-5.0, 0.0)], true);
         let up = if flap == 0 { -7.0 } else { 3.0 };
         let wing = [(-5.0, -1.0), (-11.0, up), (-5.0, 3.0)];
@@ -64,6 +73,7 @@ impl Pen<'_> {
     }
 
     fn butterfly(&mut self, cx: f32, cy: f32, flap: i32) {
+        self.next();
         let (a, b) = if flap == 0 { (-8.0, 7.0) } else { (-3.0, 4.0) };
         let wing = [(-2.0, -1.0), (-11.0, a), (-10.0, b), (-2.0, 3.0)];
         self.poly(cx, cy, 1.0, &wing, false);
@@ -74,6 +84,7 @@ impl Pen<'_> {
     }
 
     fn boss(&mut self, cx: f32, cy: f32, flap: i32, hurt: bool) {
+        self.next();
         self.poly(cx, cy, 1.0, &[(-7.0, -6.0), (-5.0, -10.0), (-2.0, -6.0), (0.0, -10.0), (2.0, -6.0), (5.0, -10.0), (7.0, -6.0)], false);
         self.poly(cx, cy, 1.0, &[(-7.0, -6.0), (-10.0, 0.0), (-6.0, 7.0), (0.0, 9.0), (6.0, 7.0), (10.0, 0.0), (7.0, -6.0)], false);
         let leg = if flap == 0 { 10.0 } else { 7.0 };
@@ -85,6 +96,7 @@ impl Pen<'_> {
     }
 
     fn burst(&mut self, cx: f32, cy: f32, rays: i32, r0: f32, r1: f32) {
+        self.next();
         for i in 0..rays {
             let t = i as f32 * std::f32::consts::TAU / rays as f32 + 0.3;
             self.line(cx + t.cos() * r0, cy + t.sin() * r0, cx + t.cos() * r1, cy + t.sin() * r1);
@@ -92,6 +104,7 @@ impl Pen<'_> {
     }
 
     fn beam(&mut self, g: &Game) {
+        self.next();
         let b = &g.al[g.cap_boss as usize];
         let n = if g.cap == C_BEAM { g.beam_len } else { 4 };
         let (cx, y0) = (b.x as f32 - 12.0, b.y as f32 - 44.0 + 14.0);
@@ -109,6 +122,7 @@ impl Pen<'_> {
     fn text(&mut self, x: f32, y: f32, u: f32, s: &str) {
         let mut x = x;
         for ch in s.chars() {
+            self.next();
             for stroke in glyph(ch.to_ascii_uppercase()).split('|').filter(|t| !t.is_empty()) {
                 let pts: Vec<(f32, f32)> = stroke
                     .split(' ')
@@ -231,8 +245,14 @@ pub fn build(g: &Game, out: &mut Vec<Seg>) {
 
 /// The same lines in the order of the drawing code (the HUD, the beam, the aliens by slot, the shots, the ship, the text).
 pub fn build_unordered(g: &Game, out: &mut Vec<Seg>) {
+    build_tagged(g, out, &mut Vec::new());
+}
+
+/// The lines in the order of the drawing code, and the number of the drawing of each line.
+pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
     out.clear();
-    let mut p = Pen { out };
+    ids.clear();
+    let mut p = Pen { out, ids, obj: 0 };
     if g.state == S_TITLE {
         p.ctext(34.0, 7.0, "GALAGA");
         p.ctext(112.0, 2.0, &format!("HI-SCORE {}", number(g.hi)));
@@ -272,10 +292,12 @@ pub fn build_unordered(g: &Game, out: &mut Vec<Seg>) {
         }
     }
     for b in g.ps.iter().filter(|b| b.act != 0) {
+        p.next();
         let (x, y) = (b.x as f32 + 9.0 - 24.0, b.y as f32 + 6.0 - 50.0);
         p.line(x, y - 4.0, x, y + 4.0);
     }
     for b in g.eb.iter().filter(|b| b.act != 0) {
+        p.next();
         let (x, y) = (b.x as f32 + 12.0 - 24.0, b.y as f32 + 4.0 - 50.0);
         p.poly(x, y, 1.0, &[(0.0, -3.0), (1.5, 0.0), (0.0, 3.0), (-1.5, 0.0)], true);
     }
