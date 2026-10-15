@@ -1,0 +1,26 @@
+name: shot
+size: 6x20
+primary: blue
+secondary: -
+# the fighter's shot on the PSP: a bolt with a white core, a cyan edge and a tail that fades. Hand-drawn rows (fixed colours).
+frame a
+..ww..
+.cwwc.
+.cwwc.
+CcwwcC
+CcwwcC
+CCwwCC
+CCwwCC
+CCwwCC
+.CwwC.
+.CwwC.
+.CccC.
+.CccC.
+.DCCD.
+.DCCD.
+..CC..
+..DD..
+..DD..
+...D..
+...D..
+...D..
