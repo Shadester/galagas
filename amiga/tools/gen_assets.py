@@ -67,12 +67,12 @@ def planar(rows, mask, npl=None):
 
 
 def sprite_list(aga=False):
-    alien = art.hand64 if aga else art.hand                         # the AGA aliens have 7 tones for each colour (art.shade64)
-    sp = [(f'{n}_{f}', alien(f'{n}_{f}')) for n in ('bee', 'bfly', 'boss', 'bossp') for f in 'ab']
+    sp = [(f'{n}_{f}', art.hand(f'{n}_{f}', aga)) for n in ('bee', 'bfly', 'boss', 'bossp') for f in 'ab']      # the AGA aliens have 7 tones for each colour, the OCS ones 4
     sp += [('ship', art.ship()), ('captive', art.captive()), ('pbul', art.PBUL), ('ebul', art.EBUL)]
     sp += [(f'expl{n}', art.explosion(f'xa{n - 1}')) for n in (1, 2, 3)]
     sp += [(f'pexp{n}', art.explosion(f'xp{n - 1}')) for n in (1, 2, 3, 4)]
     sp.append(('life', art.small_ship()))
+    sp.append(('ebul2', art.EBUL2))                                 # (last: the ids of the others stay, fast.s knows some)
     return sp
 
 

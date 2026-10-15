@@ -14,13 +14,13 @@ The rules are the rules of the PSP game, the arcade rules: the game uses `../psp
 |---|---|---|
 | Found by | no Lisa chip ID | `DENISEID` is $F8 (the boot block reads the AGA data only then) |
 | Screen | 5 bitplanes, 32 colours | 6 bitplanes, 64 colours; 64-bit bitplane fetch (FMODE 3: a quarter of the DMA slots) |
-| Aliens | 3 tones for each colour | 7 tones for each colour (`tools/art.py`, `shade64`), lit from the upper left |
+| Aliens | 4 tones for each colour | 7 tones for each colour (the same drawing, more tones), lit from the upper left |
 | Title | 32 colours | 64 colours |
 | Processor | 68000 | the instruction cache is switched on (68020 / 68030 / 68040 / 68060; the data cache stays off) |
 | Formation sway | the copper shows the play area shifted | drawn where it is: a 64-bit fetch cannot start early enough for a scroll |
 | Speed (busy autoplay) | about 80 % of the 50 pictures a second | about 99 % (in FS-UAE) |
 
-**Gameplay, the same moment (tick 950 of the autoplay build).** Left: what an Amiga 500 shows. Right: an Amiga 1200. Below: a part of each picture, enlarged. The aliens of the AGA game have a lit side and a darker lower right edge (7 tones for each colour instead of 3); the sprites are in the same places.
+**Gameplay, the same moment (tick 950 of the autoplay build).** Left: what an Amiga 500 shows. Right: an Amiga 1200. Below: a part of each picture, enlarged. The AGA aliens have 7 tones for each colour instead of 4 (smoother shading); the sprites are in the same places.
 
 ![Gameplay on an Amiga 500 (OCS, 32 colours) and on an Amiga 1200 (AGA, 64 colours), with an enlarged part of each](docs/ocs-vs-aga-play.png)
 
@@ -43,7 +43,7 @@ The same features as the other versions: 40-alien formation with fly-in waves an
 What is different:
 
 - The play area is 320 x 200 pixels, the same as the C64: the game keeps the C64 coordinates, and an alien is the C64 sprite (24 x 22 pixels). The hud (score, hi-score, stage and the lives) is above the play area. The copper shows the play area shifted to the left or right, so the formation sways without being drawn again.
-- 32 colours, 5 bitplanes. The aliens are drawn at their own size (24 pixels wide) from the designs of `psp/art.h`, in `tools/art.py`. The fighter and its shots are hardware sprites (the fighter: two attached sprites, 15 colours, 16 pixels wide; the stars and the shots use sprites 4 to 7). The aliens and bombs are drawn by the blitter into a buffer that is not shown (three buffers). Text is made of sprites too, so it needs no CPU. The hot loops are in assembly (`src/fast.s`, with the same code in C for tests).
+- 32 colours, 5 bitplanes. The aliens, the fighter and the explosions are drawn by hand (`../art`: scripts, shared with the PSP version), at their own size: 24 pixels wide, 4 tones for each colour (7 on an AGA machine). The fighter and its shots are hardware sprites (the fighter: two attached sprites, 15 colours, 16 pixels wide; the stars and the shots use sprites 4 to 7). The aliens and bombs are drawn by the blitter into a buffer that is not shown (three buffers). Text is made of sprites too, so it needs no CPU. The hot loops are in assembly (`src/fast.s`, with the same code in C for tests).
 - The beam is drawn with the CPU as checkerboard cells. The stars are hardware sprites (two layers, in fixed columns, as in the arcade game).
 - Sound is made by Paula: 8-bit samples for the effects (made by `tools/gen_assets.py`) and a square wave for the jingles.
 - **The hi-score is not saved.** It stays until you reset the machine. Writing to the floppy disk is too risky.
@@ -86,7 +86,7 @@ python3 tests/compare_aga.py     # AGA against OCS on an A1200: every sprite in 
 
 The game plays by the rules of the arcade Galaga (40 enemies, the arcade flight paths, dive scheduler and bombs; see `../ARCADE.md`).
 
-Debug flags (`make EXTRA_CFLAGS="-DAUTOPLAY -DHALT=900"`): `AUTOPLAY` (the game plays itself), `HALT=n` (freeze after n ticks), `TITLE_HOLD=n` (ticks of the title screen in an autoplay build), `START_STAGE=n`, `FORCECAPTURE`, `SELFTEST=n`, `PROFILE` (with `HALT`: shows the loops of the main loop and the vertical blanks for the ticks: fewer loops = a slower picture), `PROFILE2` (and `PROF_FROM=n`: where the time goes), `FORCE_OCS`, `SHOWHW` (writes OCS or AGA on the screen), `FORCE_NPL6`, `AGA_FMODE0`, `NOSCROLL`, `SCROLLTEST=n`, `NOASM` (the C version of `fast.s`), `NOSKIP`.
+Debug flags (`make EXTRA_CFLAGS="-DAUTOPLAY -DHALT=900"`): `AUTOPLAY` (the game plays itself), `HALT=n` (freeze after n ticks), `TITLE_HOLD=n` (ticks of the title screen in an autoplay build), `START_STAGE=n`, `FORCECAPTURE`, `SELFTEST=n`, `PROFILE` (with `HALT`: shows the loops of the main loop and the vertical blanks for the ticks: fewer loops = a slower picture), `PROFILE2` (and `PROF_FROM=n`: where the time goes), `FORCE_OCS`, `SHOWHW` (writes OCS or AGA on the screen), `SHOWBOMBS` (the two frames of the bomb in the corner), `FORCE_NPL6`, `AGA_FMODE0`, `NOSCROLL`, `SCROLLTEST=n`, `NOASM` (the C version of `fast.s`), `NOSKIP`.
 
 ## Source layout
 

@@ -19,8 +19,9 @@ python3 tests/compare.py [--ref COMMIT] [--flags -DNOASM] [--quick]   # a speed 
 
 - The tests need `playwright` (`pip install playwright pillow && playwright install chromium`) and `m68k-elf-gcc`.
 - A change in `psp/game.c` is a change for all the ports. The Amiga build includes it (`src/game.c`). The rules are the arcade rules, see `../ARCADE.md`.
-- The art is in `tools/art.py` (palette of 32 and the pixel art, with the shading rules); `tools/gen_assets.py [preview.png]` makes
-  `src/assets.h` and a preview picture. Change the art there, not in `assets.h`.
+- The palette is in `tools/art.py` (32 colours, and for AGA the 7 tones of each of blue, red, green, purple); the creatures are hand-drawn scripts in `../art/master` (see `../art/README.md`,
+  shared with the PSP); `tools/gen_assets.py [preview.png]` makes `src/assets.h` and a preview picture. Change the art in `../art`, not in `assets.h`. The fighter is a hardware sprite: only the
+  tones 1, 3, 5 of blue and red and the colours of the entries 17 .. 31.
 - Palette: sprites 4 and 5 (the stars) use the colours 25, 26 and 27: keep them mid, dim and bright in `tools/art.py`.
 - Generated and committed: `src/assets.h`, `docs/galaga.adz`, `docs/gameplay.gif`.
 - `make` does not see a change of `EXTRA_CFLAGS`: the tests delete their build folder first; do `make clean` when you try flags by hand.

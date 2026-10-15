@@ -219,13 +219,17 @@ static void draw(const Game *g) {
             s16 sx[4], sy[4], si[4];
             u8 hw[4];
             int n = 0;
-            for (i = 0; i < 4; ++i) if (g->ps[i].act) { sx[n] = g->ps[i].x + 8 - 24; sy[n] = SY(g->ps[i].y + 1); si[n++] = i; }
+            for (i = 0; i < 4; ++i) if (g->ps[i].act) { sx[n] = g->ps[i].x + 7 - 24; sy[n] = SY(g->ps[i].y + 1); si[n++] = i; }
             video_shots(sx, sy, n, hw);
             for (i = 0; i < n; ++i) if (!hw[i]) video_bob(SLOT_PBUL + si[i], SPR_PBUL, sx[i] - scroll, sy[i]);
         }
-        for (i = 0; i < EBN; ++i) if (g->eb[i].act) video_bob(SLOT_EBUL + i, SPR_EBUL, SX(g->eb[i].x + 10), SY(g->eb[i].y - 2));
+        for (i = 0; i < EBN; ++i) if (g->eb[i].act) video_bob(SLOT_EBUL + i, (g->frame >> 2) & 1 ? SPR_EBUL2 : SPR_EBUL, SX(g->eb[i].x + 9), SY(g->eb[i].y - 3));
     }
     draw_messages(g);
+#ifdef SHOWBOMBS                                        /* test: the two frames of the bomb, in the corner (the two last bomb slots) */
+    video_bob(SLOT_EBUL + EBN - 1, SPR_EBUL, 100, 100);
+    video_bob(SLOT_EBUL + EBN - 2, SPR_EBUL2, 116, 100);
+#endif
 #ifdef SHOWHW                                       /* test: say what the game runs on */
     video_text(video_is_aga() ? "AGA" : "OCS", 280, 244, WHITE);
 #endif
