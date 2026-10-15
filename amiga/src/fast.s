@@ -94,12 +94,14 @@ alien_wants:
         moveq   #4,d2
         sub.w   d1,d2                   | SPR_BOSS_A 4, SPR_BFLY_A 2, SPR_BEE_A 0
 4:      add.w   d3,d2                   | the wing frame
+        moveq   #0,d1                   | (an explosion is 2 lines higher: it is 24 lines, an alien 21)
 5:      move.w  d2,(a1)+
         move.w  2(a0),d0
         sub.w   d5,d0
         move.w  d0,(a1)+
         move.w  6(a0),d0
         sub.w   #22,d0                  | screen y = y - 50 + TOP (28)
+        sub.w   d1,d0
         move.w  d0,(a1)+
         bra.s   8f
 6:      move.l  20(a0),d2               | the explosion: frame 2 - timer / 4, 0 .. 2
@@ -112,6 +114,7 @@ alien_wants:
         ble.s   71f
         moveq   #2,d2
 71:     add.w   #12,d2                  | SPR_EXPL1
+        moveq   #2,d1
         bra.s   5b
 9:      move.w  #-1,(a1)+               | nothing
         clr.l   (a1)+                   | (x and y 0: the same slot in the next frame is the same sprite)

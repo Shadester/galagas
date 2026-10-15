@@ -67,20 +67,25 @@ def planar(rows, mask):
 
 
 def sprite_list():
-    c = T.c64_sprites()
-    sp = []
-    for name, own in (('bee', 'b'), ('bfly', 'r'), ('boss', 'g'), ('bossp', 'p')):
-        base = 'boss' if name == 'bossp' else name
-        for f in 'ab':
-            sp.append((f'{name}_{f}', art.hand(f'{name}_{f}')))
+    sp = [(f'{n}_{f}', art.hand(f'{n}_{f}')) for n in ('bee', 'bfly', 'boss', 'bossp') for f in 'ab']
     sp += [('ship', art.ship()), ('captive', art.captive()), ('pbul', art.PBUL), ('ebul', art.EBUL)]
-    for n in (1, 2, 3):
-        sp.append((f'expl{n}', art.alien(crop(T.recolour(c[f'expl{n}'], 'o')), 'O')))
-    for n in (1, 2, 3, 4):                                         # the C64 draws these in hires: no doubling downwards
-        rows = scaled(crop(T.recolour(c[f'pexp{n}'], 'o')), 2, 1)
-        sp.append((f'pexp{n}', [r.replace('o', 'O').replace('c', 'C') for r in rows]))
+    sp += [(f'expl{n}', art.explosion(f'xa{n - 1}')) for n in (1, 2, 3)]
+    sp += [(f'pexp{n}', art.explosion(f'xp{n - 1}')) for n in (1, 2, 3, 4)]
     sp.append(('life', art.small_ship()))
     return sp
+
+
+def hw_sprite(rows, first, bits):
+    """The data words of a hardware sprite 16 pixels wide: for each row plane A and plane B of the sprite; pixel value = entry - first (1 .. 2^bits - 1).
+    bits 4: attached pair, returns (even sprite words, odd sprite words); bits 2: one sprite."""
+    ev, od = [], []
+    for r in rows:
+        v = [(PEN[ch] - first) if ch != '.' else 0 for ch in r.ljust(16, '.')]
+        assert all(0 <= x < (1 << bits) for x in v), r
+        for plane, out in ((0, ev), (2, od)):
+            for bit in (plane, plane + 1):
+                out.append(sum((x >> bit & 1) << (15 - i) for i, x in enumerate(v)))
+    return ev, od
 
 
 def title():
@@ -229,13 +234,19 @@ def main():
             seen[key] = len(words)
             words.extend(data)
         return seen[key]
-    for name, art in sp:
-        wpp, bob = planar(art, False)
-        _, mask = planar(art, True)
-        table.append((wpp, len(art), place(bob), place(mask)))
+    for name, rows in sp:
+        wpp, bob = planar(rows, False)
+        _, mask = planar(rows, True)
+        table.append((wpp, len(rows), place(bob), place(mask)))
     out.append(arr('sprite_words', words))
     out.append('typedef struct { unsigned char w, h; unsigned short bob, mask; } SpriteInfo;   /* w: words without the padding; bob, mask: index in sprite_words */')
     out.append('static const SpriteInfo sprites[SPR_COUNT] = {\n' + ',\n'.join('    {%d, %d, %d, %d}' % t for t in table) + ',\n};')
+    ev, od = hw_sprite(art.ship(), 16, 4)
+    out.append('#define SHIP_HW_H %d' % len(art.ship()))
+    out.append(arr('ship_hw_even', ev))
+    out.append(arr('ship_hw_odd', od))
+    out.append('#define SHOT_HW_H %d' % len(art.PBUL))
+    out.append(arr('shot_hw', hw_sprite(art.PBUL, 28, 2)[0]))
     out.append(arr('game_palette', [rgb4(c) for c in COLOURS], per=8))
     tcol, tw, tpx = title()
     out.append(arr('title_palette', [rgb4(c) for c in tcol], per=8))
@@ -266,14 +277,14 @@ def main():
     if len(sys.argv) > 1:                                           # preview: sprites 3x on the left, the title below
         im = Image.new('RGB', (960, 700), (30, 30, 30))
         x = y = 4
-        for name, art in sp:
-            for yy, r in enumerate(art):
+        for name, rows in sp:
+            for yy, r in enumerate(rows):
                 for xx, ch in enumerate(r):
                     if ch != '.':
                         for dy in range(3):
                             for dx in range(3):
                                 im.putpixel((x + xx * 3 + dx, y + yy * 3 + dy), COLOURS[PEN[ch]])
-            x += max(len(r) for r in art) * 3 + 8
+            x += max(len(r) for r in rows) * 3 + 8
             if x > 800:
                 x, y = 4, y + 70
         tim = Image.new('RGB', (320, 178))

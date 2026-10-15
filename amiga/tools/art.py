@@ -1,26 +1,28 @@
 """Pixel art of the Amiga game, at 1-pixel resolution, in a 32-colour palette (5 bitplanes).
 
-The aliens start from the C64 art (12 multicolour pixels wide, from ../c64/src/art.asm): it is doubled with an edge-smoothing
-algorithm (Scale2x, so diagonals stay diagonals) and shaded (light where the sprite meets the background at the upper left,
-dark at the lower right). The ship, the captive and the small things are drawn by hand as text rows.
+The aliens are the designs of ../psp/art.h drawn again at the size of the Amiga screen: 24 pixels wide (the left half, 12 pixels, is given; it is
+mirrored). The ship is 16 pixels wide: it is a hardware sprite (two attached sprites, 15 colours), so its colours are in entries 17 .. 31 of
+the palette, and so are the colours of the stars (25, 26, 27, hardware sprites 4 and 5) and of the shots (29, 30, hardware sprites 6 and 7).
 Every letter of the art is one palette entry (PALETTE); '.' is transparent."""
 
 # letter, rgb. The index of a letter is its place in this list (0 is the background, black).
 PALETTE = [
-    ('K', (0, 0, 0)),                 # 0 black (also an opaque black in a sprite)
-    ('w', (255, 255, 255)),           # 1 white
-    ('R', (238, 34, 0)),              # 2 text red
-    ('a', (36, 56, 190)), ('b', (68, 102, 255)), ('c', (150, 182, 255)),        # 3-5 blue: dark, mid, light (the bee, the ship)
-    ('d', (150, 16, 0)), ('e', (238, 40, 8)), ('f', (255, 140, 110)),           # 6-8 red (the butterfly, the ship)
-    ('g', (0, 110, 44)), ('h', (0, 204, 68)), ('i', (150, 255, 160)),           # 9-11 green (the boss)
-    ('j', (110, 30, 140)), ('k', (204, 68, 221)), ('l', (236, 176, 248)),       # 12-14 purple (the boss, hit)
-    ('m', (190, 96, 130)), ('n', (255, 150, 184)), ('o', (255, 216, 232)),      # 15-17 pink (the captive)
-    ('y', (255, 255, 0)), ('Y', (200, 150, 0)),                                 # 18-19 yellow, dark yellow
-    ('C', (0, 204, 221)), ('D', (0, 120, 140)),                                 # 20-21 cyan, dark cyan
-    ('O', (255, 136, 0)), ('P', (176, 68, 0)),                                  # 22-23 orange, dark orange
-    ('S', (206, 206, 226)), ('s', (132, 132, 164)),                             # 24-25 light grey, mid grey (the ship)
-    ('1', (60, 60, 96)), ('2', (210, 210, 240)), ('3', (30, 30, 52)),           # 26-28: stars (hardware sprites 4 and 5 use colours 25, 26, 27: mid, dim, bright), 28 spare
-    ('B', (40, 90, 210)), ('L', (140, 190, 255)),                               # 29-30 the beam
+    ('K', (0, 0, 0)),                                                           # 0 black (also an opaque black in a sprite)
+    ('w', (255, 255, 255)),                                                     # 1 white (text)
+    ('R', (238, 34, 0)),                                                        # 2 red (text)
+    ('g', (0, 110, 44)), ('h', (0, 204, 68)), ('i', (150, 255, 160)),           # 3-5 green (the boss): dark, mid, light
+    ('j', (110, 30, 140)), ('k', (204, 68, 221)), ('l', (236, 176, 248)),       # 6-8 purple (the boss, hit)
+    ('Y', (200, 150, 0)),                                                       # 9 dark yellow
+    ('O', (255, 136, 0)), ('P', (176, 68, 0)),                                  # 10-11 orange, dark orange (explosions)
+    ('B', (40, 90, 210)),                                                       # 12 blue of the beam
+    ('1', (0, 0, 0)), ('2', (0, 0, 0)), ('3', (0, 0, 0)), ('4', (0, 0, 0)),     # 13-16 spare
+    ('W', (255, 255, 255)),                                                     # 17 white (the ship)
+    ('a', (36, 56, 190)), ('b', (68, 102, 255)), ('c', (150, 182, 255)),        # 18-20 blue: dark, mid, light (the bee, the ship)
+    ('e', (238, 40, 8)), ('d', (150, 16, 0)), ('f', (255, 140, 110)),           # 21-23 red: mid, dark, light (the butterfly, the ship)
+    ('y', (255, 255, 0)),                                                       # 24 yellow
+    ('s', (132, 132, 164)), ('5', (60, 60, 96)), ('S', (210, 210, 240)),        # 25-27 grey; the stars of hardware sprites 4 and 5 are mid, dim, bright
+    ('C', (0, 204, 221)),                                                       # 28 cyan
+    ('D', (0, 120, 140)), ('L', (170, 225, 255)),                               # 29-30 the shot (hardware sprites 6 and 7), the beam
     ('t', (40, 40, 70)),                                                        # 31 text shadow
 ]
 PEN = {'.': 0}
@@ -28,186 +30,97 @@ for i, (ch, _) in enumerate(PALETTE):
     PEN[ch] = i
 COLOURS = [rgb for _, rgb in PALETTE]
 assert len(PALETTE) == 32
-
-BODY = {'b': 'abc', 'r': 'def', 'g': 'ghi', 'p': 'jkl', 'n': 'mno', 'w': 'sSw', 'O': 'POy'}   # kind -> dark, mid, light letters
-ACCENT = {'y': 'yY', 'c': 'CD'}                               # bright, dark
-
-
-def scale2x(g):
-    """Scale2x (AdvMAME2x): doubles a picture and keeps the diagonals smooth. g: rows of one-character cells."""
-    h, w = len(g), len(g[0])
-
-    def at(x, y):
-        return g[min(max(y, 0), h - 1)][min(max(x, 0), w - 1)] if 0 <= x < w and 0 <= y < h else '.'
-    out = []
-    for y in range(h):
-        r0, r1 = [], []
-        for x in range(w):
-            p, a, b, c, d = at(x, y), at(x, y - 1), at(x + 1, y), at(x - 1, y), at(x, y + 1)
-            e0 = a if (c == a and c != d and a != b) else p
-            e1 = b if (a == b and a != c and b != d) else p
-            e2 = c if (d == c and d != b and c != a) else p
-            e3 = d if (b == d and b != a and d != c) else p
-            r0 += [e0, e1]
-            r1 += [e2, e3]
-        out += [r0, r1]
-    return out
-
-
-def shade(g, own, radius=3, t1=0.08):
-    """Kinds ('.', 'o' own colour, 'y', 'c') -> art letters. The sprite is lit from the upper left: the height of the surface is the
-    blurred shape, and the slope towards the light decides the tone (light, mid, dark). That rounds the body."""
-    h, w = len(g), len(g[0])
-
-    def solid(x, y):
-        return 1.0 if 0 <= x < w and 0 <= y < h and g[y][x] != '.' else 0.0
-    n = (2 * radius + 1) ** 2
-
-    def height(x, y):
-        return sum(solid(x + i, y + j) for i in range(-radius, radius + 1) for j in range(-radius, radius + 1)) / n
-    rows = []
-    for y in range(h):
-        r = ''
-        for x in range(w):
-            k = g[y][x]
-            if k == '.':
-                r += '.'
-                continue
-            slope = (height(x + 1, y) - height(x - 1, y)) + (height(x, y + 1) - height(x, y - 1))     # > 0: faces the light
-            tone = 2 if slope > t1 else 0 if slope < -t1 else 1
-            if k == 'o' or k in BODY:
-                r += BODY[own if k == 'o' else k][tone]
-            elif k == 'x':                                       # the dark / light tone of the body, whatever the light says
-                r += BODY[own][0]
-            elif k == 'z':
-                r += BODY[own][2]
-            elif k in ACCENT:
-                br, dk = ACCENT[k]
-                r += dk if tone == 0 else br
-            else:                                                # any other letter is a colour of the palette
-                r += k
-        rows.append(r)
-    return rows
-
-
-def alien(c64_rows, own):
-    """c64_rows: the 12-character rows of a C64 sprite (. y o c), cropped at the bottom. -> 24 wide art, double the height."""
-    return shade(scale2x([list(r) for r in c64_rows]), own)
-
-
-# ---- the ship: the shape as kinds (w white, b blue, r red, c cyan, y yellow); the same shading as the aliens ----
-SHIP_HALF = [
-    ".........w",
-    ".........w",
-    "........ww",
-    "........ww",
-    ".......www",
-    ".......wwc",
-    ".......wwc",
-    ".......wwc",
-    "......wwwc",
-    "......wwww",
-    ".r....wwww",
-    ".r....wwww",
-    ".r...bwwww",
-    ".rr..bbwww",
-    ".rrb.bbbww",
-    ".rbbbbbbbw",
-    "rrbbbbbbbb",
-    "rrbbbbbbbb",
-    "rrbbbbbwbb",
-    ".rbbb..wbb",
-    "......rr.w",
-    "......yy..",
-]
+TEXT_WHITE, TEXT_RED, TEXT_CYAN, TEXT_SHADOW = PEN['w'], PEN['R'], PEN['C'], PEN['t']
 
 
 def mirror(half):
     return [r + r[::-1] for r in half]
 
 
-def ship(remap=None):
-    g = [list(r) for r in mirror(SHIP_HALF)]
-    if remap:
-        g = [[remap.get(ch, ch) for ch in r] for r in g]
-    return shade(g, 'b', radius=2, t1=0.08)
+def recolour(rows, table):
+    return [''.join(table.get(ch, ch) for ch in r) for r in rows]
 
 
-def captive():
-    """The same ship, red and pink (the fighter that the boss has captured)."""
-    return ship({'w': 'n', 'b': 'r', 'r': 'y'})
-
-
-def mini(rows, factor=2):
-    """Every `factor`-th pixel: the ship for the lives at the bottom."""
-    g = [[ch for ch in r[::factor]] for r in rows[::factor]]
-    return [''.join(r) for r in g]
-
-
-def small_ship():
-    g = [list(r) for r in mirror(SHIP_HALF)]
-    g = [r[::2] for r in g[::2]]
-    return shade(g, 'b', radius=1, t1=0.12)
-
-
-PBUL = ['Cw', 'Cw', 'Cw', 'CC', 'CC', 'CC', 'DC', 'DC', 'D.', 'D.']
-EBUL = ['.yy.', 'yyyy', 'yeey', 'yeey', 'deed', 'deed', 'deed', 'deed', '.dd.']
-
-# ---- the aliens: our own 16 x 16 art of ../psp/art.h (the same pictures as the other ports), 1.5 times as big: 24 wide, as on the C64 ----
-import os
-import re
-
-_H = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'psp', 'art.h')).read()
-PSP = {m.group(1): re.findall(r'"([^"]*)"', m.group(2)) for m in re.finditer(r'static ArtRows art_(\w+) = \{(.*?)\};', _H, re.S)}
-LETTER = {'y': 'y', 'Y': 'Y', 'c': 'C', 'w': 'w', 'k': 'K', 'o': 'O', 'r': 'e', 'b': 'b', 'g': 's'}
-HALF12 = [0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7]               # 8 columns of the left half -> 12 (every third one doubled), then mirrored
-
-
-def from_psp(name, own):
-    """The 16 x 16 art `name` (left half given) as 24 pixels wide, 1.5 times as high; m, M, n are the own colour's mid, light and dark tones."""
-    rows = PSP[name]
-    used = [y for y in range(16) if rows[y].strip('.')]
-    rows = rows[used[0]:used[-1] + 1]
-    tone = {'m': BODY[own][1], 'M': BODY[own][2], 'n': BODY[own][0]}
-    ry = [i * 2 // 3 for i in range(len(rows) * 3 // 2)]
-    out = []
-    for y in ry:
-        half = ''.join((tone.get(rows[y][x]) or LETTER.get(rows[y][x], '.')) for x in HALF12)
-        out.append(half + half[::-1])
-    return out
+# ---- the aliens: left halves, two wing frames ----
+BEE_A = [
+    "....yy......", ".....yy.....", "......yy....", "aaa....bbbbb", "aaaa..bbbbbb", "aacaa.bbcccb", "aacccabbeeeb", "aacccabbeebb",
+    "aacccabbbKKb", ".aaccbbbbbbb", "..acbbbbbbbb", "...aabbbYyyy", "....aabbbbbb", ".....abbbbbb", "......bbYyyy", "......aabbbb",
+    "......aabbbb", ".......aabbb", ".........aaa", ".........aaa", "..........aa"]
+BEE_B = [
+    "....yy......", ".....yy.....", "......yy....", ".......bbbbb", "......bbbbbb", "......bbcccb", "....aabbeeeb", "....aabbeebb",
+    "....aabbbKKb", ".aa.aabbbbbb", "aaaaaabbbbbb", "aacaa.bbYyyy", "aacccabbbbbb", "aacccabbbbbb", "aacccabbYyyy", ".aaccbaabbbb",
+    "..acbbaabbbb", "...aab.aabbb", ".........aaa", ".........aaa", "..........aa"]
+BFLY_A = [
+    "...yy....yy.", "...yyy..yy..", "....yy.yy...", "ffe....CCCCC", "ffee.d.CCCCC", "fffeed.CCwwC", "ffyffeddCwwC", "ffyffeddCwCC",
+    "eefyyfddCCCC", ".eeeeeeeeeee", "..eeeeeeeeee", ".ddeeeeeyyye", "...ddeeeeeee", "...ddeeeeeee", "...dddeeeeef", "....ddeeeffe",
+    ".....deeefee", "......ddeeee", ".......dddde", ".......dddde"]
+BFLY_B = [
+    "....yy...yy.", ".....y..yy..", ".......yy...", "....ffeeCCCC", "....ffeCCCCC", "....ffffCwwC", "...ffyffCwwC", "...ffyfCCwCC",
+    "...eefyyCCCC", "....eeeeeeee", ".....eeeeeee", "....ddeeyyye", "......eeeeee", ".....deeeeee", "....ddeeeeef", "....eeeeeffe",
+    "....eeeeefee", "....eeddeeee", ".......dddde", ".......dddde"]
+BOSS_A = [
+    ".........CCC", ".....C..CCCC", "....CC.CCCCw", "...CCCyyyCCC", "...CCCyyyCCC", "...yyyyyyyyC", "...gghhhhhhi", "..ggihhhhhhi",
+    ".ggiiihhhhhh", ".hhiiYyyhhhY", "ghhiYYyyhhhY", "gghhhYyyYhhh", "ggghhhhhhhhh", "ggghhhhhhhhh", "gggggihhhhhh", "...ggghhhhhh",
+    "..gggghhhhhh", ".gghhg.hhhhh", "ggh.gg.gghhh", "ggh.gg..ghhh", "gg..gg...ggg"]
+BOSS_B = [
+    ".........CCC", ".....C..CCCC", "....CC.CCCCw", "...CCCyyyCCC", "...CCCyyyCCC", "...yyyyyyyyC", "...gghhhhhhi", "..ggihhhhhhi",
+    ".ggiiihhhhhh", ".hhiiYyyhhhY", "ghhiYYyyhhhY", "gghhhYyyYhhh", "ggghhhhhhhhh", "ggghhhhhhhhh", "gggggihhhhhh", "...ggghhhhhh",
+    "...ggghhhhhh", "...ggghhhhhh", "....gghhghhh", "....gghgghhh", "....gggg.ggg"]
+PURPLE = {'g': 'j', 'h': 'k', 'i': 'l'}
 
 
 def hand(name):
     kind, f = name.split('_')
-    base = {'bee': 'bee', 'bfly': 'bfly', 'boss': 'boss', 'bossp': 'boss'}[kind]
-    own = {'bee': 'b', 'bfly': 'r', 'boss': 'g', 'bossp': 'p'}[kind]
-    return from_psp(f'{base}_{f}', own)
+    half = {'bee': (BEE_A, BEE_B), 'bfly': (BFLY_A, BFLY_B), 'boss': (BOSS_A, BOSS_B), 'bossp': (BOSS_A, BOSS_B)}[kind][f == 'b']
+    rows = mirror(half)
+    return recolour(rows, PURPLE) if kind == 'bossp' else rows
 
 
-def ship_psp(cols=(0, 1, 2, 3, 3, 4, 5, 6, 7, 7), height=22, remap=None):
-    """The fighter of psp/art.h: 20 pixels wide (10 columns mirrored) and `height` rows. The art has its own shading, so it is not shaded again."""
-    rows = PSP['player']
-    used = [y for y in range(16) if rows[y].strip('.')]
-    rows = rows[used[0]:used[-1] + 1]
-    out = []
-    for i in range(height):
-        half = ''.join(LETTER.get(rows[i * len(rows) // height][x], '.') for x in cols)
-        row = half + half[::-1]
-        out.append(''.join((remap or {}).get(ch, ch) for ch in row))
-    return out
+# ---- the ship: 16 pixels wide, a hardware sprite (the colours are in entries 17 .. 31) ----
+SHIP_HALF = [
+    ".......W", ".......W", "......WW", "......WW", "......WC", ".....WWC", ".....WWC", ".....cWW", "....bcWW", "....bbWW",
+    "e...bbWW", "e..abbbW", "ee.abbbb", "eeaabcbb", "ebbbbcbb", "WbbbbbWb", "WbbbbbWb", "Wabb.bbb", "Wa....sa", ".ee..yyd"]
 
 
 def ship():
-    return ship_psp()
+    return mirror(SHIP_HALF)
 
 
 def captive():
-    """The same ship, red and pink (the fighter that the boss has captured)."""
-    return ship_psp(remap={'w': 'n', 'b': 'e', 'e': 'y', 'C': 'o'})
+    """The same ship, red (the fighter that the boss has captured): blitted, as the playfield colours (the red of 21, 22, 23)."""
+    return recolour(ship(), {'W': 'f', 'a': 'd', 'b': 'e', 'c': 'f', 'e': 'y', 'C': 'W', 'y': 'e', 's': 'd'})
 
 
 def small_ship():
-    return ship_psp(cols=(0, 1, 3, 4, 6, 7)[:5], height=11)
+    """The lives in the hud: every second pixel of the ship."""
+    rows = ship()
+    return [''.join(r[x] for x in range(0, 16, 2)) for r in rows[::2]]
 
 
-EXTRA = [ship(), captive(), small_ship()]
+# ---- the shot of the fighter: hardware sprite 6 / 7, pixel values 13, 14, 15 = entries 29, 30, 31 ----
+PBUL = ['LD', 'LD', 'LD', 'LD', 'LD', 'LD', 'LD', 'DD', 'D.', 'D.']
+EBUL = ['.yy.', 'yyyy', 'yeey', 'yeey', 'deed', 'deed', 'deed', 'deed', '.dd.']
+
+
+# ---- explosions: the art of ../psp/art.h (3 frames for an alien, 4 for the fighter), 1.5 times as big (every third pixel doubled, a majority vote) ----
+import os
+import re
+from collections import Counter
+
+_H = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'psp', 'art.h')).read()
+PSP = {m.group(1): re.findall(r'"([^"]*)"', m.group(2)) for m in re.finditer(r'static ArtRows art_(\w+) = \{(.*?)\};', _H, re.S)}
+_X = {'o': 'O', 'y': 'y', 'w': 'w', 'c': 'C', 'r': 'e'}
+
+
+def explosion(name):
+    full = [''.join(_X.get(ch, ch) for ch in (r + r[::-1])) for r in PSP[name]]
+    h, w = len(full), len(full[0])
+    big = [[full[y // 3][x // 3] for x in range(w * 3)] for y in range(h * 3)]
+    out = []
+    for y in range(0, h * 3, 2):
+        row = ''
+        for x in range(0, w * 3, 2):
+            cells = [big[yy][xx] for yy in range(y, min(y + 2, h * 3)) for xx in range(x, min(x + 2, w * 3))]
+            row += max(Counter(cells).most_common(), key=lambda t: (t[1], t[0] != '.'))[0]
+        out.append(row)
+    return out

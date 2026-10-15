@@ -22,6 +22,8 @@ extern Obj want[];
 static inline void video_bob(int slot, int id, int x, int y) { want[slot].id = id; want[slot].x = x; want[slot].y = y; }
 void video_static_bob(int id, int x, int y);         /* in the static layer: drawn at once */
 #define STAR_ROWS (SCREEN_H - 16 - TOP)                /* the offsets of the layers wrap at this number */
+void video_ship(int n, int x, int y);                 /* the fighter n (0, 1) as hardware sprites: its top left in screen pixels, not scrolled; call it in every frame it is shown */
+void video_shots(const s16 *x, const s16 *y, int n, u8 *hw);   /* up to 4 shots: hw[i] = 1: a hardware sprite shows it; else draw it with video_bob */
 void video_stars(int slow, int fast);                /* hardware sprites: the starfield, scrolled by these two offsets (negative: no stars) */
 void video_text(const char *s, int x, int y, int colour);   /* colour: pen 1 (white), 2 (red) or 20 (cyan) */
 void video_beam(int x, int y, int rows, int phase);  /* the tractor beam: rows of 8 pixel cells, widening, under x, y */

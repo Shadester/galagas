@@ -51,7 +51,7 @@ static void read_input(Input *in) {
 /* ---- the screen ---- */
 static int star_slow, star_fast;                  /* the starfield (hardware sprites, video.c): the offsets of its two layers */
 
-enum { WHITE = 1, RED = 2, CYAN = 20 };          /* palette entries (tools/art.py) */
+enum { WHITE = 1, RED = 2, CYAN = 28 };          /* palette entries (tools/art.py) */
 
 static char *put_num(char *p, int n, int digits) {
     int i;
@@ -152,7 +152,7 @@ static void alien_wants(const Alien *al, Obj *w, int anim, int challenge, int sc
         if (a->st == A_EXPLODE) { int f = 2 - (a->timer >> 2); id = SPR_EXPL1 + (f < 0 ? 0 : f > 2 ? 2 : f); }
         else if (a->type == T_BOSS && a->hp == 1 && !challenge) id = SPR_BOSSP_A + anim;
         else id = (a->type == T_BOSS ? SPR_BOSS_A : a->type == T_BUTTERFLY ? SPR_BFLY_A : SPR_BEE_A) + anim;
-        w[i].id = id; w[i].x = a->x - 24 - sc; w[i].y = a->y - 50 + TOP;
+        w[i].id = id; w[i].x = a->x - 24 - sc; w[i].y = a->y - 50 + TOP - (a->st == A_EXPLODE ? 2 : 0);
     }
 }
 #else
@@ -198,10 +198,10 @@ static void draw(const Game *g) {
         if (prof_on) prof_acc[10] += now_lines() - pa;
 #endif
         if (g->state == S_DYING) {
-            if (!g->dyingQuiet) { int f = 3 - (g->stateTimer >> 4); video_bob(SLOT_SHIP, SPR_PEXP1 + (f < 0 ? 0 : f > 3 ? 3 : f), SX(g->px), SY(g->py)); }
+            if (!g->dyingQuiet) { int f = 3 - (g->stateTimer >> 4); video_bob(SLOT_SHIP, SPR_PEXP1 + (f < 0 ? 0 : f > 3 ? 3 : f), SX(g->px - 1), SY(g->py - 5)); }
         } else if (g->state != S_READY && !(g->invuln & 4)) {
-            video_bob(SLOT_SHIP, SPR_SHIP, SX(g->px + 3), SY(g->py - 2));
-            if (g->dual) video_bob(SLOT_DUAL, SPR_SHIP, SX(g->px + 19), SY(g->py - 2));
+            video_ship(0, g->px + 3 - 24, SY(g->py - 2));                  /* hardware sprites: the playfield scroll does not move them */
+            if (g->dual) video_ship(1, g->px + 19 - 24, SY(g->py - 2));
         }
         if (g->cap == C_CARRY) {
             const Alien *b = &g->al[g->capBoss];
@@ -209,7 +209,14 @@ static void draw(const Game *g) {
         } else if (g->cap == C_RESCUE) {
             video_bob(SLOT_CAPTIVE, SPR_CAPTIVE, SX(g->rx + 3), SY(g->ry - 2));
         }
-        for (i = 0; i < 4; ++i) if (g->ps[i].act) video_bob(SLOT_PBUL + i, SPR_PBUL, SX(g->ps[i].x + 8), SY(g->ps[i].y + 1));
+        {
+            s16 sx[4], sy[4], si[4];
+            u8 hw[4];
+            int n = 0;
+            for (i = 0; i < 4; ++i) if (g->ps[i].act) { sx[n] = g->ps[i].x + 8 - 24; sy[n] = SY(g->ps[i].y + 1); si[n++] = i; }
+            video_shots(sx, sy, n, hw);
+            for (i = 0; i < n; ++i) if (!hw[i]) video_bob(SLOT_PBUL + si[i], SPR_PBUL, sx[i] - scroll, sy[i]);
+        }
         for (i = 0; i < EBN; ++i) if (g->eb[i].act) video_bob(SLOT_EBUL + i, SPR_EBUL, SX(g->eb[i].x + 10), SY(g->eb[i].y - 2));
     }
     draw_messages(g);

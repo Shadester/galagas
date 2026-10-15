@@ -51,6 +51,9 @@ static u16 copper[NBMP][COPLEN];                  /* a copper list for each bitm
 static int cop_title[NBMP];                       /* the palette that is in a list: 1 title, 0 game */
 static int scroll_d;                              /* this frame: the playfield below the hud is shown shifted to the right by this many pixels */
 static const u16 no_sprite[2] = {0, 0};          /* a sprite list with nothing in it */
+static struct { s16 x, y; u8 on; } ship_req[2];   /* the hardware fighters and shots of this frame (see below) */
+static struct { s16 x, y; u8 hw; } shot_req[4];
+static int nshot_req;
 static void stars_init(void);
 u32 row_off[SCREEN_H];                            /* the bytes of the lines of a bitmap (a table is faster than a multiplication: fast.s) */
 static int cop_pal, cop_bpl, cop_spr, cop_bpl2, cop_con1;   /* indexes in the copper list: the palette values, the bitplane pointers (hud, playfield), the sprite pointers, BPLCON1 of the playfield */
@@ -165,6 +168,8 @@ void video_begin(void) {
     d->nrect = 0;
     for (i = NAL; i < MAX_OBJ; ++i) { want[i].id = -1; want[i].x = want[i].y = 0; }     /* (the aliens: main.c sets all of their slots in every frame) */
     ntext = nnew_ov = 0;
+    ship_req[0].on = ship_req[1].on = 0;
+    nshot_req = 0;
     beam_req.rows = 0;
 }
 
@@ -261,6 +266,61 @@ static void build_stars(int b) {
     for (g = 0; g < 2; ++g) {
         if (star_scroll[g] >= 0) stars_layer(star_list[b][g], stars[g], star_scroll[g], star_t0, star_t1);
         else star_list[b][g][0] = star_list[b][g][1] = 0;
+    }
+}
+
+
+/* ---- the fighter and its shots are hardware sprites: no blitter, no clearing, nothing drawn over. The fighter is two attached sprites (0 + 1, and 2 + 3 for the second
+ * fighter of a dual): 16 x SHIP_HW_H pixels, 15 colours (entries 17 .. 31). The shots (2 pixels wide) are sprites 6 and 7: a channel shows one shot below the other. The lists are
+ * made in video_end, like the stars. A shot that does not fit in a channel is drawn by the blitter (video_shots says which). ---- */
+#define SHIP_LIST (2 + SHIP_HW_H * 2 + 2)
+#define SHOT_LIST (2 * (2 + SHOT_HW_H * 2) + 2)
+static u16 ship_list[NBMP][4][SHIP_LIST];
+static u16 shot_list[NBMP][2][SHOT_LIST];
+void video_ship(int n, int x, int y) { ship_req[n].x = x; ship_req[n].y = y; ship_req[n].on = 1; }
+
+static u16 *hw_head(u16 *l, int x, int y, int h, int attach) {       /* the two first words of a sprite: SPRxPOS, SPRxCTL */
+    int hs = STAR_HOFF + x, v = 0x2c + y;
+    *l++ = (v & 255) << 8 | (hs >> 1 & 255);
+    *l++ = ((v + h) & 255) << 8 | (v >> 8 & 1) << 2 | ((v + h) >> 8 & 1) << 1 | (hs & 1) | (attach ? 0x80 : 0);
+    return l;
+}
+
+/* The shots of this frame (x, y: the top left in screen pixels, not scrolled): sets hw[i] to 1 for the ones that a sprite shows. */
+void video_shots(const s16 *x, const s16 *y, int n, u8 *hw) {
+    int i, j, last[2] = {-1000, -1000}, order[4], c;
+    nshot_req = 0;
+    for (i = 0; i < n; ++i) { order[i] = i; hw[i] = 0; }
+    for (i = 1; i < n; ++i) { int t = order[i]; for (j = i; j > 0 && y[order[j - 1]] > y[t]; --j) order[j] = order[j - 1]; order[j] = t; }   /* by y: a channel needs them in this order */
+    for (i = 0; i < n; ++i) {
+        int k = order[i], v = 0x2c + y[k];
+        for (c = 0; c < 2; ++c) if (v >= last[c] + 2) break;
+        if (c == 2) continue;
+        last[c] = v + SHOT_HW_H;
+        hw[k] = 1;
+        shot_req[nshot_req].x = x[k]; shot_req[nshot_req].y = y[k]; shot_req[nshot_req].hw = c; ++nshot_req;
+    }
+}
+
+static void build_hw(int b) {
+    int n, k;
+    for (n = 0; n < 2; ++n) {
+        u16 *e = ship_list[b][2 * n], *o = ship_list[b][2 * n + 1];
+        if (ship_req[n].on) {
+            e = hw_head(e, ship_req[n].x, ship_req[n].y, SHIP_HW_H, 0);
+            o = hw_head(o, ship_req[n].x, ship_req[n].y, SHIP_HW_H, 1);
+            for (k = 0; k < SHIP_HW_H * 2; ++k) { *e++ = ship_hw_even[k]; *o++ = ship_hw_odd[k]; }
+        }
+        *e++ = 0; *e = 0; *o++ = 0; *o = 0;
+    }
+    {
+        u16 *l[2] = {shot_list[b][0], shot_list[b][1]};
+        for (n = 0; n < nshot_req; ++n) {
+            int c = shot_req[n].hw;
+            l[c] = hw_head(l[c], shot_req[n].x, shot_req[n].y, SHOT_HW_H, 0);
+            for (k = 0; k < SHOT_HW_H * 2; ++k) *l[c]++ = shot_hw[k];
+        }
+        *l[0]++ = 0; *l[0] = 0; *l[1]++ = 0; *l[1] = 0;
     }
 }
 
@@ -460,7 +520,7 @@ static void text_rect(int x, int n, int y, Rect *r) {
 }
 
 static void text_now(const char *s, int x, int y, int colour) {
-    int n, id0 = SPR_GLYPH + (colour == 2 ? 64 : colour == 20 ? 128 : 0) - 32;      /* the colours of the text: white (pen 1), red (2), cyan (20) */
+    int n, id0 = SPR_GLYPH + (colour == 2 ? 64 : colour == 28 ? 128 : 0) - 32;      /* the colours of the text: white (pen 1), red (2), cyan (28) */
     for (n = 0; s[n]; ++n) {
         Obj o = {id0 + s[n], x + 8 * n, y};
         Place p;
@@ -484,7 +544,7 @@ void video_text(const char *s, int x, int y, int colour) {
     text_rect(x, n, y, &new_ov[nnew_ov++]);
 }
 
-static const u8 beam_colours[4] = {20, 30, 1, 30};           /* cyan, light blue, white, light blue */
+static const u8 beam_colours[4] = {28, 30, 1, 30};           /* cyan, light blue, white, light blue */
 
 /* the beam: rows of 8 pixel cells that get wider, with a checkerboard in the colours of beam_colours */
 static void beam_rect(int r, Rect *out) {
@@ -552,6 +612,7 @@ void video_end(int title) {
     wait_blit();
     build_stars(back);
 #endif
+    build_hw(back);
     for (i = 0; i < ntext; ++i) text_now(text_req[i].s, text_req[i].x, text_req[i].y, text_req[i].colour);
     if (cop_title[back] != title) { copper_set_palette(back, title ? title_palette : game_palette); cop_title[back] = title; }
     {
@@ -566,6 +627,14 @@ void video_end(int title) {
         for (i = 0; i < 2; ++i) {                  /* sprites 4 and 5: the stars of this bitmap */
             u32 p = (u32)star_list[back][i];
             c[cop_spr + 4 * (4 + i)] = p >> 16; c[cop_spr + 4 * (4 + i) + 2] = p & 0xffff;
+        }
+        for (i = 0; i < 4; ++i) {                  /* sprites 0 .. 3: the fighters; 6 and 7: the shots */
+            u32 p = (u32)ship_list[back][i];
+            c[cop_spr + 4 * i] = p >> 16; c[cop_spr + 4 * i + 2] = p & 0xffff;
+        }
+        for (i = 0; i < 2; ++i) {
+            u32 p = (u32)shot_list[back][i];
+            c[cop_spr + 4 * (6 + i)] = p >> 16; c[cop_spr + 4 * (6 + i) + 2] = p & 0xffff;
         }
     }
     while (((W(0x004) & 1) << 8 | W(0x006) >> 8) < 8) ;       /* COP1LC is read at the vertical blank: not now (the first lines) */

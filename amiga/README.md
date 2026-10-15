@@ -19,7 +19,7 @@ The same features as the other versions: 40-alien formation with fly-in waves an
 What is different:
 
 - The play area is 320 x 200 pixels, the same as the C64: the game keeps the C64 coordinates, and an alien is the C64 sprite (24 x 22 pixels). The hud (score, hi-score, stage and the lives) is above the play area. The copper shows the play area shifted to the left or right, so the formation sways without being drawn again.
-- 32 colours, 5 bitplanes. The sprites are drawn at 1-pixel resolution and shaded (`tools/art.py`): the aliens, the ship and the other pictures are our own art (`psp/art.h`, the same as the other ports), made 1.5 times as big. Three screen buffers: the blitter draws the sprites in a buffer that is not shown. The aliens, the ship and the bullets are not hardware sprites, so there is no limit of 8 (and no multiplexer, unlike the C64).
+- 32 colours, 5 bitplanes. The aliens are drawn at their own size (24 pixels wide) from the designs of `psp/art.h`, in `tools/art.py`. The fighter and its shots are hardware sprites (the fighter: two attached sprites, 15 colours, 16 pixels wide; the stars and the shots use sprites 4 to 7). The aliens and bombs are drawn by the blitter into a buffer that is not shown (three buffers). Text is made of sprites too, so it needs no CPU. The hot loops are in assembly (`src/fast.s`, with the same code in C for tests).
 - The beam is drawn with the CPU as checkerboard cells. The stars are hardware sprites (two layers, in fixed columns, as in the arcade game).
 - Sound is made by Paula: 8-bit samples for the effects (made by `tools/gen_assets.py`) and a square wave for the jingles.
 - **The hi-score is not saved.** It stays until you reset the machine. Writing to the floppy disk is too risky.
