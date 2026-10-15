@@ -20,8 +20,15 @@ The rules are the rules of the PSP game, the arcade rules: the game uses `../psp
 | Formation sway | the copper shows the play area shifted | drawn where it is: a 64-bit fetch cannot start early enough for a scroll |
 | Speed (busy autoplay) | about 80 % of the 50 pictures a second | about 99 % (in FS-UAE) |
 
-![AGA: the title picture in 64 colours](docs/aga-title.png)
-![AGA: gameplay on an A1200](docs/aga-play.png)
+**Gameplay, the same moment (tick 950 of the autoplay build).** Left: what an Amiga 500 shows. Right: an Amiga 1200. Below: a part of each picture, enlarged. The aliens of the AGA game have a lit side and a darker lower right edge (7 tones for each colour instead of 3); the sprites are in the same places.
+
+![Gameplay on an Amiga 500 (OCS, 32 colours) and on an Amiga 1200 (AGA, 64 colours), with an enlarged part of each](docs/ocs-vs-aga-play.png)
+
+**Title picture.** Left: 32 colours. Right: 64 colours (the smooth orange of the logo).
+
+![The title picture on an Amiga 500 (OCS, 32 colours) and on an Amiga 1200 (AGA, 64 colours), with an enlarged part of each](docs/ocs-vs-aga-title.png)
+
+Both pictures of each pair come from FS-UAE as an A1200. The left one is the same disk with `-DFORCE_OCS`: the game then plays the OCS game that an A500 plays. `tools/make_aga_compare.py` makes the two figures. `tests/compare_aga.py` checks that every sprite is in the same place in both.
 
 The ECS chipset (A500+, A600) plays the OCS game. Everything is in one binary: `-DFORCE_OCS` makes an A1200 play the OCS game, which is how the two are compared (`tests/compare_aga.py`).
 
