@@ -7,11 +7,13 @@ built here without floats. `README.md` has the status, controls, commands and th
 
 ```sh
 tools/setup-macos.sh                  # once: m68k-elf-gcc, binutils, FS-UAE, Pillow (Homebrew)
-make                                  # build/galaga.adf (m68k-elf-gcc -O3, objcopy, tools/make_adf.py); NPL=4 builds 4 planes (speed test only: the art is for 5)
+make                                  # build/galaga.adf (m68k-elf-gcc -O3, objcopy, tools/make_adf.py): the game + build/aga.bin (the AGA data, read only on an AGA machine)
 tools/run.sh                          # build and run it in FS-UAE (brew install --cask fs-uae-emulator)
 make web                              # docs/galaga.adz for the play link in the READMEs
 python3 tests/test_selftest.py [n]    # the 68000 in vAmigaWeb vs the Mac, 4 scenarios (about 10 s)
 python3 tests/shots.py [--update] [case ...]   # screenshots in vAmigaWeb; look at new refs before you commit them
+python3 tests/test_hw.py [ticks] [model ...]   # the rules on a500 / a1200 / a1200-030 / a1200-040 in FS-UAE (needs Screen Recording; the user's Kickstart ROMs)
+python3 tests/compare_aga.py                  # AGA against OCS on an A1200: the sprites in the same places (masks)
 python3 tests/compare.py [--ref COMMIT] [--flags -DNOASM] [--quick]   # a speed change must not change a picture: builds the reference commit (worktree) and this tree, freezes both at 17 tick counts, compares pixels
 ```
 
@@ -28,9 +30,22 @@ python3 tests/compare.py [--ref COMMIT] [--flags -DNOASM] [--quick]   # a speed 
 
 - **Supervisor mode:** the Kickstart calls the boot block in user mode. `move #x,sr` is privileged: the boot block calls
   `SuperState` (exec, -150) before it kills the OS. Without it the game hangs at the first `move.w #0x2700,sr` (grey screen).
-- **Boot:** a1 = the trackdisk request, a6 = ExecBase. The boot block does `AllocMem`, `DoIO` (`CMD_READ` from byte 1024),
-  motor off, then INTENA / INTREQ / DMACON off, copies the game to 0x1000 and jumps. `tools/make_adf.py` patches the load
-  size into byte 16 and makes the checksum. The boot block must stay under 1024 bytes.
+- **Boot:** a1 = the trackdisk request, a6 = ExecBase. The boot block does `AllocMem`, `DoIO` (`CMD_READ` from byte 1024), and on an AGA machine
+  (`DENISEID` $F8) a second `AllocMem` (`MEMF_CHIP | MEMF_REVERSE`: from the top of the chip RAM, far above the game) and a `DoIO` of the AGA data
+  (after the game on the disk); motor off, then INTENA / INTREQ / DMACON off. **The copy of the game to 0x1000 runs from a stub at 0x800**: the boot
+  block itself may be in the place of the game, and any change of its length once made the game hang on an A1200. The caches are cleared before the jump
+  (a 68020 / 68030 does not see in its instruction cache that code was written: without that it hangs). d7 = ExecBase `AttnFlags`, d5 = the AGA memory
+  go to `hw.s`. `tools/make_adf.py` patches the sizes into bytes 16 (game), 20 (AGA data), 24 (AGA memory) and makes the checksum. The boot block must stay under 1024 bytes (about 400).
+- **Detection (`hw.s`):** `hw_attn`, `hw_aga`, `aga_block`. AGA = Lisa ID $F8 (do not test the Agnus ID: AGA PAL / NTSC are $22 / $32). The instruction cache is switched
+  on for 020 / 030 (`movec`, CACR 9) and 040 / 060 (`cpusha` / `cinva`, CACR $8000); the data cache stays off (custom registers, chip RAM). The code in `fast.s`
+  is plain 68000 code.
+- **AGA display (`video.c`, `aga_mode`):** 6 planes, `BPLCON2` bit 9 (KILLEHB: 6 planes are 64 colours, not extra half-brite), 24-bit palette = two banks of 32 (`BPLCON3`),
+  each written twice (high nibbles, then the low nibbles with LOCT), `FMODE` 3. **A 64-bit fetch cannot start earlier than DDFSTRT $38** (tested in FS-UAE: $18 garbled
+  the planes, with and without sprite DMA), so there is no hidden block for the copper scroll: `video_can_scroll()` is 0 and the formation is drawn where it is. A blit has at most
+  1024 lines of all planes: the title picture (178 lines of 6 planes) is blitted in two halves. The bitmaps of an AGA machine are in the memory that the boot block allocated and must
+  be cleared (AllocMem does not). `-DFORCE_NPL6` (assets with `NPL=6`) tests the layout of 6 planes on OCS (extra half-brite shows the same picture).
+- **AGA data (`src/aga.h`, `tools/gen_assets.py --aga`):** a header, the sprite table and words for 6 planes (7 tones for each body colour: `art.shade64`), the palettes (64 x 0x00RRGGBB),
+  the title picture in 64 colours (pens 0, 1, 2 and 31 are black, white, red and the text shadow). The text pens (1, 2, 28, 31) and the hardware sprite colours (17 .. 31) are the same in both palettes.
 - **The blitter and the CPU:** the blitter works while the CPU runs. Wait for it (`wait_blit`, `DMACONR` bit 14, read it once
   first) before the CPU draws in the same bitmap or starts the next blit. A missing wait gave text that was cleared a moment
   after it was drawn, and sprites that were missing in every other frame.

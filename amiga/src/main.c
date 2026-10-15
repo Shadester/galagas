@@ -170,7 +170,13 @@ static void draw(const Game *g) {
     if (prof_on) prof_acc[9] += now_lines() - pstart;
 #endif
     if (g->state == S_TITLE || g->state == S_GAMEOVER) for (i = 0; i < NAL; ++i) { want[i].id = -1; want[i].x = want[i].y = 0; }
-    scroll = g->state == S_TITLE ? 0 : g->formDx;
+    scroll = g->state == S_TITLE || !video_can_scroll() ? 0 : g->formDx;
+#ifdef NOSCROLL                                         /* test: no copper scroll: the formation is drawn where it is */
+    scroll = 0;
+#endif
+#ifdef SCROLLTEST                                       /* test: scroll further, the pictures must be the same (everything is drawn at x - scroll) */
+    if (g->state != S_TITLE) scroll += SCROLLTEST;
+#endif
     video_scroll(scroll);
     video_title(g->state == S_TITLE);
     if (g->state == S_TITLE) {
@@ -220,6 +226,9 @@ static void draw(const Game *g) {
         for (i = 0; i < EBN; ++i) if (g->eb[i].act) video_bob(SLOT_EBUL + i, SPR_EBUL, SX(g->eb[i].x + 10), SY(g->eb[i].y - 2));
     }
     draw_messages(g);
+#ifdef SHOWHW                                       /* test: say what the game runs on */
+    video_text(video_is_aga() ? "AGA" : "OCS", 280, 244, WHITE);
+#endif
 #ifdef PROFILE2
     if (prof_on) prof_acc[6] += now_lines() - pstart;
 #endif

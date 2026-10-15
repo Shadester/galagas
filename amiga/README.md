@@ -2,15 +2,32 @@
 
 [**▶ Play it in your browser**](https://vamigaweb.github.io/#AROS=true#https://raw.githubusercontent.com/Shadester/galagas/master/amiga/docs/galaga.adz) (vAmigaWeb, with its own AROS ROM: no Kickstart needed)
 
-A port of the Galaga clone to the Commodore Amiga 500 (68000, OCS chipset, PAL). It is a bootable floppy disk: the game starts from the boot block and takes over the whole machine. There is no AmigaOS in it.
+A port of the Galaga clone to the Commodore Amiga (PAL). One bootable floppy disk runs on an **Amiga 500** (68000, OCS or ECS chipset) and on an **Amiga 1200** (AGA chipset, 68020 and up): the game finds out what it runs on at start-up. It starts from the boot block and takes over the whole machine. There is no AmigaOS in it.
 
 ![Gameplay: the title screen, then the autoplay build with stage intro, fly-in, a tractor beam and a capture](docs/gameplay.gif)
 
 The rules are the rules of the PSP game, the arcade rules: the game uses `../psp/game.c` itself (the reference). It is compiled without floating point (the arcade paths are a table). A test runs the 68000 build in an emulator and compares the whole game state with the build on the Mac, for 15000 ticks.
 
+## One disk, two machines
+
+| | Amiga 500 (OCS / ECS) | Amiga 1200 (AGA) |
+|---|---|---|
+| Found by | no Lisa chip ID | `DENISEID` is $F8 (the boot block reads the AGA data only then) |
+| Screen | 5 bitplanes, 32 colours | 6 bitplanes, 64 colours; 64-bit bitplane fetch (FMODE 3: a quarter of the DMA slots) |
+| Aliens | 3 tones for each colour | 7 tones for each colour (`tools/art.py`, `shade64`), lit from the upper left |
+| Title | 32 colours | 64 colours |
+| Processor | 68000 | the instruction cache is switched on (68020 / 68030 / 68040 / 68060; the data cache stays off) |
+| Formation sway | the copper shows the play area shifted | drawn where it is: a 64-bit fetch cannot start early enough for a scroll |
+| Speed (busy autoplay) | about 80 % of the 50 pictures a second | about 99 % (in FS-UAE) |
+
+![AGA: the title picture in 64 colours](docs/aga-title.png)
+![AGA: gameplay on an A1200](docs/aga-play.png)
+
+The ECS chipset (A500+, A600) plays the OCS game. Everything is in one binary: `-DFORCE_OCS` makes an A1200 play the OCS game, which is how the two are compared (`tests/compare_aga.py`).
+
 ## Status
 
-It runs in vAmigaWeb. The rules, the pictures and the keyboard are tested there. **The sound has not been heard**: it is checked by reading the code only. It has not been tried on a real Amiga.
+It runs in vAmigaWeb (A500) and in FS-UAE (A500, A500+, A1200 with a 68EC020, 68030 and 68040). The rules, the pictures and the keyboard are tested there. **The sound has not been heard**: it is checked by reading the code only. It has not been tried on a real Amiga.
 
 ## Features
 
@@ -39,7 +56,9 @@ What is different:
 
 ```sh
 make                 # build/galaga.adf: a 880 KB floppy disk image
-tools/run.sh         # build, then run it in FS-UAE
+tools/run-ocs.sh     # build, then run it in FS-UAE as an Amiga 500 (OCS)
+tools/run-aga.sh     # the same as an Amiga 1200 (AGA, 68020; needs your Kickstart 3.1 ROM)
+tools/run.sh         # build, then run it in FS-UAE (MODEL=A500|A1200 ...)
 make web             # docs/galaga.adz: the same, gzipped (for the link above)
 python3 tools/gen_assets.py [preview.png]   # src/assets.h: sprites, title picture, font, sound
 python3 tools/make_gif.py                   # record docs/gameplay.gif (about 2 minutes)
@@ -48,15 +67,19 @@ python3 tools/make_gif.py                   # record docs/gameplay.gif (about 2 
 To play it, run `tools/run.sh`: it starts the `.adf` in FS-UAE (`brew install --cask fs-uae-emulator`) in a window, with the AROS replacement ROM that is inside FS-UAE. (`KICKSTART=file` uses a Kickstart ROM instead. vAmiga cannot take a disk from the command line.) On a real Amiga, write the ADF to a floppy disk.
 
 The tests run the game in vAmigaWeb in a headless browser. Install it once: `pip install playwright pillow && playwright install chromium`.
+The tests of the Amiga 1200 run FS-UAE (`tests/fsuae.py`; the Kickstart ROM is your own, in `~/Documents/FS-UAE/Kickstarts`) and take a picture of its window only: macOS asks once for the permission Screen Recording. `pip install pyobjc-framework-Quartz`.
 
 ```sh
 python3 tests/test_selftest.py   # the 68000 against the Mac: 4 scenarios, 3000 ticks (a number as argument: more)
 python3 tests/shots.py           # screenshot tests (--update after a change you want)
+python3 tests/compare.py         # a change for speed must not change a picture: this tree against a commit (--quick: 5 cases)
+python3 tests/test_hw.py         # the rules on an A500, an A1200 (68020), a 68030 and a 68040 in FS-UAE (the detection and the caches)
+python3 tests/compare_aga.py     # AGA against OCS on an A1200: every sprite in the same place
 ```
 
 The game plays by the rules of the arcade Galaga (40 enemies, the arcade flight paths, dive scheduler and bombs; see `../ARCADE.md`).
 
-Debug flags (`make EXTRA_CFLAGS="-DAUTOPLAY -DHALT=900"`): `AUTOPLAY` (the game plays itself), `HALT=n` (freeze after n ticks), `TITLE_HOLD=n` (ticks of the title screen in an autoplay build), `START_STAGE=n`, `FORCECAPTURE`, `SELFTEST=n`, `PROFILE` (with `HALT`: shows the loops of the main loop and the vertical blanks for the ticks: fewer loops = a slower picture).
+Debug flags (`make EXTRA_CFLAGS="-DAUTOPLAY -DHALT=900"`): `AUTOPLAY` (the game plays itself), `HALT=n` (freeze after n ticks), `TITLE_HOLD=n` (ticks of the title screen in an autoplay build), `START_STAGE=n`, `FORCECAPTURE`, `SELFTEST=n`, `PROFILE` (with `HALT`: shows the loops of the main loop and the vertical blanks for the ticks: fewer loops = a slower picture), `PROFILE2` (and `PROF_FROM=n`: where the time goes), `FORCE_OCS`, `SHOWHW` (writes OCS or AGA on the screen), `FORCE_NPL6`, `AGA_FMODE0`, `NOSCROLL`, `SCROLLTEST=n`, `NOASM` (the C version of `fast.s`), `NOSKIP`.
 
 ## Source layout
 

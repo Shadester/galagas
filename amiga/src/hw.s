@@ -9,7 +9,29 @@ _start: move.w  #0x2700,sr
         bcc.s   2f
         clr.l   (a0)+
         bra.s   1b
-2:      lea     vbl(pc),a0              | level 3 autovector: the vertical blank
+2:      move.l  d5,aga_block            | the memory of an AGA machine (bootblock): the AGA data, then the bitmaps; 0: none
+        move.w  d7,hw_attn              | the processor (AttnFlags of exec, d7 from the bootblock): 68020 bit 1, 68030 bit 2, 68040 bit 3, 68060 bit 7
+        move.w  0xdff07c,d0             | DENISEID: AGA Lisa $F8 (ECS Denise $FC, OCS: no ID)
+        cmp.b   #0xf8,d0
+        bne.s   3f
+4:      move.b  #1,hw_aga
+3:      .ifdef  NOCACHE
+        bra.s   6f
+        .endif
+        move.w  hw_attn,d1              | the instruction cache of a 68020 / 68030 / 68040 / 68060 (the data cache stays off: it would hold the custom
+        move.w  d1,d0                   | registers and the chip RAM that the blitter writes)
+        and.w   #0x0006,d0
+        beq.s   5f
+        moveq   #9,d0                   | CACR: enable the instruction cache, clear it
+        .word   0x4e7b,0x0002           | movec d0,cacr
+5:      move.w  d1,d0
+        and.w   #0x0088,d0
+        beq.s   6f
+        .word   0xf4f8                  | cpusha bc: write back the data cache before it goes off
+        .word   0xf4d8                  | cinva bc
+        move.l  #0x8000,d0              | CACR: instruction cache on (68040: ICE, 68060: EIC), data cache off
+        .word   0x4e7b,0x0002           | movec d0,cacr
+6:      lea     vbl(pc),a0              | level 3 autovector: the vertical blank
         move.l  a0,0x6c
         lea     idle(pc),a0             | the other vectors do nothing
         lea     0x64,a1
@@ -58,6 +80,10 @@ kbd:    movem.l d0-d1/a0,-(sp)
         rte
 
         .bss
-        .global vbl_count, keys
+        .global vbl_count, keys, hw_attn, hw_aga, aga_block
 vbl_count: .long 0
 keys:   .space 128                      | 1 for a key that is down, by key code
+hw_attn: .word 0                        | the processor flags (see _start)
+hw_aga: .byte 0                         | 1: an AGA machine (A1200, A4000)
+        .even
+aga_block: .long 0

@@ -124,3 +124,70 @@ def explosion(name):
             row += max(Counter(cells).most_common(), key=lambda t: (t[1], t[0] != '.'))[0]
         out.append(row)
     return out
+
+
+# ---- AGA: 64 colours. The first 32 are the same (the text and the hardware sprites use them); the others make the aliens smoother: every body colour has 7 tones instead of 3 ----
+RAMPS = {'blue': 'abc', 'red': 'def', 'green': 'ghi', 'purple': 'jkl'}                 # dark, mid, light (the letters of PALETTE)
+assert not set('AQJTEFGHIMNUVXZ0') & set(ch for ch, _ in PALETTE)        # (a clash would change the pen of a letter of the OCS art)
+EXTRA_LETTERS = {'blue': 'AQJT', 'red': 'EFGH', 'green': 'IMNU', 'purple': 'VXZ0'}      # the new tones 0, 2, 4, 6 of a ramp (7 tones: 0 deepest .. 6 brightest; the old ones are 1, 3, 5)
+
+
+def _lerp(a, b, t):
+    return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+
+
+def _tones(ramp):
+    d, m, l = (COLOURS[PEN[ch]] for ch in RAMPS[ramp])
+    return [_lerp((0, 0, 0), d, .55), d, _lerp(d, m, .5), m, _lerp(m, l, .5), l, _lerp(l, (255, 255, 255), .55)]
+
+
+COLOURS64 = list(COLOURS)
+TONE = {}                                                                             # ramp -> the 7 letters
+for _r, _letters in RAMPS.items():
+    tones = _tones(_r)
+    TONE[_r] = [EXTRA_LETTERS[_r][0], _letters[0], EXTRA_LETTERS[_r][1], _letters[1], EXTRA_LETTERS[_r][2], _letters[2], EXTRA_LETTERS[_r][3]]
+    for _i in (0, 2, 4, 6):
+        PEN[TONE[_r][_i]] = len(COLOURS64)
+        COLOURS64.append(tones[_i])
+COLOURS64 += [(0, 0, 0)] * (64 - len(COLOURS64))
+RAMP_OF = {ch: (r, i) for r, letters in TONE.items() for i, ch in enumerate(letters)}   # letter -> (ramp, tone)
+
+
+def shade64(rows):
+    """The art of an alien with 7 tones for each body colour, lit from the upper left: the tone of the OCS art, plus or minus one by the slope of the shape (the height is the
+    blurred silhouette), and a darker edge at the lower right. Other colours (eyes, yellow, cyan, white) stay as they are."""
+    h, w = len(rows), len(rows[0])
+    solid = [[1.0 if rows[y][x] != '.' else 0.0 for x in range(w)] for y in range(h)]
+
+    def height(x, y, r=2):
+        n = 0.0
+        for j in range(-r, r + 1):
+            for i in range(-r, r + 1):
+                if 0 <= x + i < w and 0 <= y + j < h:
+                    n += solid[y + j][x + i]
+        return n / (2 * r + 1) ** 2
+
+    def empty(x, y):
+        return not (0 <= x < w and 0 <= y < h) or rows[y][x] == '.'
+    out = []
+    for y in range(h):
+        row = ''
+        for x in range(w):
+            ch = rows[y][x]
+            if ch not in RAMP_OF:
+                row += ch
+                continue
+            ramp, tone = RAMP_OF[ch]
+            slope = (height(x + 1, y) - height(x - 1, y)) + (height(x, y + 1) - height(x, y - 1))        # > 0: faces the light
+            t = tone + max(-1, min(1, round(slope * 4)))
+            if empty(x, y + 1) or empty(x + 1, y):
+                t -= 1                                                                                   # the lower and right edge
+            elif empty(x - 1, y) or empty(x, y - 1):
+                t += 1                                                                                   # the upper and left edge catches the light
+            row += TONE[ramp][max(0, min(6, t))]
+        out.append(row)
+    return out
+
+
+def hand64(name):
+    return shade64(hand(name))

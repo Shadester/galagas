@@ -124,9 +124,6 @@ alien_wants:
         rts
 
 | ---- the sprites of a bitmap (video.c: Place, Slot, Dirt, draw_sprites; the C versions are the same, -DNOASM) ----
-        .ifndef NPL
-        .set    NPL,5                   | bitplanes (video.c)
-        .endif
         .set    MAX_OBJ,55              | NAL + 3 + 4 + EBN (video.c checks)
         .set    OBJ_PAD,56
         .set    TOP,28
@@ -278,9 +275,11 @@ place_fill:
         move.w  d6,6(a6)                | r.h
         move.w  d3,d4
         lsl.w   #2,d4
-        .if NPL == 5
-        add.w   d3,d4                   | the words in a row of the picture: 5 planes
-        .endif
+        add.w   d3,d4                   | the words in a row of the picture: 5 planes ...
+        cmp.w   #6,video_npl+2
+        bne.s   7f
+        add.w   d3,d4                   | ... or 6
+7:
         tst.w   d5
         beq.s   3f
         mulu    d4,d5                   | d5: skip * words in a row
@@ -320,10 +319,11 @@ place_fill:
         move.w  d4,P_CON0(a6)           | A B C D, D = A B + /A C, the shift of B
         move.w  d6,d4
         lsl.w   #2,d4
-        .if NPL == 5
         add.w   d6,d4
-        .endif
-        lsl.w   #6,d4
+        cmp.w   #6,video_npl+2
+        bne.s   8f
+        add.w   d6,d4
+8:      lsl.w   #6,d4
         or.w    d3,d4
         move.w  d4,P_SIZE(a6)           | the lines of the planes, the words
         move.w  d3,d4

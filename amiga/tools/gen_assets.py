@@ -22,7 +22,7 @@ import gen_assets as T  # noqa: E402  (builds the sprite art on import)
 
 import art  # noqa: E402  (tools/art.py: the palette and the pixel art)
 
-NPL = 5                                                            # bitplanes: 32 colours
+NPL = int(os.environ.get('NPL', 5))                                # bitplanes: 5 = 32 colours (6 only to test the layout of 6 planes: make FORCE_NPL6)
 PEN = art.PEN
 COLOURS = art.COLOURS
 
@@ -46,7 +46,7 @@ def crop(rows):
     return rows
 
 
-def planar(rows, mask):
+def planar(rows, mask, npl=None):
     """rows of art letters -> words, interleaved planes, one padding word. mask: the same, 0 / 0xffff."""
     w = max(len(r) for r in rows)
     words_per_plane = (w + 15) // 16
@@ -54,7 +54,7 @@ def planar(rows, mask):
     for r in rows:
         r = r.ljust(words_per_plane * 16, '.')
         pens = [PEN[ch] for ch in r]
-        for p in range(NPL):
+        for p in range(npl or NPL):
             for k in range(words_per_plane):
                 v = 0
                 for b in range(16):
@@ -66,8 +66,9 @@ def planar(rows, mask):
     return words_per_plane, out
 
 
-def sprite_list():
-    sp = [(f'{n}_{f}', art.hand(f'{n}_{f}')) for n in ('bee', 'bfly', 'boss', 'bossp') for f in 'ab']
+def sprite_list(aga=False):
+    alien = art.hand64 if aga else art.hand                         # the AGA aliens have 7 tones for each colour (art.shade64)
+    sp = [(f'{n}_{f}', alien(f'{n}_{f}')) for n in ('bee', 'bfly', 'boss', 'bossp') for f in 'ab']
     sp += [('ship', art.ship()), ('captive', art.captive()), ('pbul', art.PBUL), ('ebul', art.EBUL)]
     sp += [(f'expl{n}', art.explosion(f'xa{n - 1}')) for n in (1, 2, 3)]
     sp += [(f'pexp{n}', art.explosion(f'xp{n - 1}')) for n in (1, 2, 3, 4)]
@@ -88,7 +89,7 @@ def hw_sprite(rows, first, bits):
     return ev, od
 
 
-def title():
+def title(npl=5):
     """320 x 178, 32 colours. The palette is fitted without the dim star specks (they would take entries from the small aliens).
     Pens 0, 1, 2 are black, white and red (the text), pen 31 is the shadow of the text."""
     w, h = 320, 178
@@ -97,20 +98,22 @@ def title():
     flat = lambda im: im.get_flattened_data() if hasattr(im, 'get_flattened_data') else im.getdata()
     bright = Image.new('RGB', src.size)
     bright.putdata([p if max(p) >= 120 else (0, 0, 0) for p in flat(src)])
-    fit = bright.quantize(31, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+    ncol = 1 << npl                                                 # the picture has ncol - 1 colours of its own; pen 31 is the shadow of the text
+    fit = bright.quantize(ncol - 1, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
     q = src.quantize(palette=fit, dither=Image.Dither.NONE)
-    pal = [tuple(fit.getpalette()[i * 3:i * 3 + 3]) for i in range(31)]
+    pal = [tuple(fit.getpalette()[i * 3:i * 3 + 3]) for i in range(ncol - 1)]
     order = []
     for want in ((0, 0, 0), (255, 255, 255), (238, 34, 0)):
-        order.append(min((i for i in range(31) if i not in order), key=lambda i: sum((a - b) ** 2 for a, b in zip(pal[i], want))))
-    order += [i for i in range(31) if i not in order]
-    colours = [pal[i] for i in order] + [art.COLOURS[art.PEN['t']]]
+        order.append(min((i for i in range(ncol - 1) if i not in order), key=lambda i: sum((a - b) ** 2 for a, b in zip(pal[i], want))))
+    order += [i for i in range(ncol - 1) if i not in order]
+    colours = [pal[i] for i in order]
+    colours.insert(31, art.COLOURS[art.PEN['t']])                   # the shadow is pen 31 (the text sprites)
     colours[0], colours[1], colours[2] = (0, 0, 0), (255, 255, 255), (238, 34, 0)
-    pen = {old: new for new, old in enumerate(order)}
+    pen = {old: new + (new >= 31) for new, old in enumerate(order)}
     px = [pen[v] for v in flat(q)]
     words = []
     for y in range(h):                                              # interleaved planes, 20 words a plane
-        for p in range(NPL):
+        for p in range(npl):
             for k in range(20):
                 v = 0
                 for b in range(16):
@@ -220,6 +223,54 @@ def arr(name, vals, typ='unsigned short', per=12, fmt='0x%04x'):
     return '\n'.join(lines)
 
 
+def build_tables(sp, npl):
+    """The data words of all sprites (equal pictures and masks, e.g. of the text colours, are stored once) and the table (w, h, bob, mask)."""
+    words, table, seen = [], [], {}
+
+    def place(data):
+        key = tuple(data)
+        if key not in seen:
+            seen[key] = len(words)
+            words.extend(data)
+        return seen[key]
+    for name, rows in sp:
+        wpp, bob = planar(rows, False, npl)
+        _, mask = planar(rows, True, npl)
+        table.append((wpp, len(rows), place(bob), place(mask)))
+    return words, table
+
+
+def rgb24(c):
+    return c[0] << 16 | c[1] << 8 | c[2]
+
+
+def build_aga(path):
+    """The AGA blob (src/aga.h has the layout): what the bootblock reads only on an AGA machine. 6 bitplanes, 64 colours: the sprites, the palette of the game,
+    the title picture with its own palette. All offsets are bytes from the start; the size is a multiple of 512 (sectors)."""
+    import struct
+    sp = sprite_list(True) + glyph_list()
+    words, table = build_tables(sp, 6)
+    tcol, tw, _ = title(6)
+    spr_b = b''.join(struct.pack('>BBHH', *t) for t in table)
+    words_b = struct.pack('>%dH' % len(words), *words)
+    pal_b = struct.pack('>64I', *[rgb24(c) for c in art.COLOURS64])
+    tpal_b = struct.pack('>64I', *[rgb24(c) for c in tcol])
+    title_b = struct.pack('>%dH' % len(tw), *tw)
+    header = 32
+    blocks, offs = [], []
+    pos = header
+    for b in (spr_b, words_b, pal_b, tpal_b, title_b):
+        if pos % 2:
+            blocks.append(b'\0'); pos += 1
+        offs.append(pos)
+        blocks.append(b)
+        pos += len(b)
+    size = (pos + 511) // 512 * 512
+    blob = struct.pack('>4sIIIIIII', b'AGA1', size, len(table), *offs) + b''.join(blocks)
+    open(path, 'wb').write(blob.ljust(size, b'\0'))
+    print(path, size, 'bytes: ', len(table), 'sprites,', len(words) * 2, 'bytes of sprite data, title', len(title_b), 'bytes')
+
+
 def main():
     sp = sprite_list()
     named = len(sp)
@@ -227,17 +278,7 @@ def main():
     out = ['/* Generated by tools/gen_assets.py: do not edit. */', '#ifndef ASSETS_H', '#define ASSETS_H', '']
     out.append('enum {  /* sprite ids; the characters of the text (SPR_GLYPH + 64 * colour + ASCII - 32) come last */\n    ' +
                ', '.join('SPR_' + n.upper() for n, _ in sp[:named]) + ', SPR_GLYPH, SPR_COUNT = SPR_GLYPH + %d\n};' % (len(sp) - named))
-    words, table, seen = [], [], {}
-    def place(data):                                                # equal pictures and masks (the text colours share masks) are stored once
-        key = tuple(data)
-        if key not in seen:
-            seen[key] = len(words)
-            words.extend(data)
-        return seen[key]
-    for name, rows in sp:
-        wpp, bob = planar(rows, False)
-        _, mask = planar(rows, True)
-        table.append((wpp, len(rows), place(bob), place(mask)))
+    words, table = build_tables(sp, NPL)
     out.append(arr('sprite_words', words))
     out.append('typedef struct { unsigned char w, h; unsigned short bob, mask; } SpriteInfo;   /* w: words without the padding; bob, mask: index in sprite_words */')
     out.append('static const SpriteInfo sprites[SPR_COUNT] = {\n' + ',\n'.join('    {%d, %d, %d, %d}' % t for t in table) + ',\n};')
@@ -293,4 +334,7 @@ def main():
         im.save(sys.argv[1])
 
 
-main()
+if len(sys.argv) > 2 and sys.argv[1] == '--aga':
+    build_aga(sys.argv[2])
+else:
+    main()

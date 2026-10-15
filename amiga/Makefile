@@ -1,8 +1,8 @@
 # Amiga Galaga: m68k-elf-gcc (Homebrew: m68k-elf-gcc m68k-elf-binutils) -> raw image -> ADF
 CC = m68k-elf-gcc
 EXTRA_CFLAGS =
-NPL = 5
-CFLAGS = -m68000 -O3 -ffreestanding -fno-pic -Wall -Wextra -Wno-unused-parameter -I ../psp -I src -isystem src/inc -DNPL=$(NPL) $(EXTRA_CFLAGS)
+EXTRA_ASFLAGS =
+CFLAGS = -m68000 -O3 -ffreestanding -fno-pic -Wall -Wextra -Wno-unused-parameter -I ../psp -I src -isystem src/inc $(EXTRA_CFLAGS)
 BUILD = build
 OBJ = $(BUILD)/hw.o $(BUILD)/main.o $(BUILD)/video.o $(BUILD)/audio.o $(BUILD)/game.o $(BUILD)/libc.o $(BUILD)/fast.o
 
@@ -18,7 +18,7 @@ $(BUILD)/%.o: src/%.c $(wildcard src/*.h) ../psp/game.c ../psp/game.h | $(BUILD)
 $(BUILD)/game.o: CFLAGS += -O3
 
 $(BUILD)/%.o: src/%.s | $(BUILD)
-	m68k-elf-as -m68000 --register-prefix-optional --defsym NPL=$(NPL) -o $@ $<
+	m68k-elf-as -m68000 --register-prefix-optional $(EXTRA_ASFLAGS) -o $@ $<
 
 $(BUILD)/game.elf: $(OBJ) link.ld
 	$(CC) -m68000 -nostdlib -T link.ld -o $@ $(OBJ) -lgcc -Wl,-Map=$(BUILD)/game.map
@@ -29,8 +29,12 @@ $(BUILD)/game.bin: $(BUILD)/game.elf
 $(BUILD)/boot.bin: $(BUILD)/boot.o
 	m68k-elf-objcopy -O binary -j .text $< $@
 
-$(BUILD)/galaga.adf: $(BUILD)/boot.bin $(BUILD)/game.bin tools/make_adf.py
-	python3 tools/make_adf.py $(BUILD)/boot.bin $(BUILD)/game.bin $@
+# the AGA data: only an AGA machine reads it (the bootblock)
+$(BUILD)/aga.bin: tools/gen_assets.py tools/art.py | $(BUILD)
+	python3 tools/gen_assets.py --aga $@
+
+$(BUILD)/galaga.adf: $(BUILD)/boot.bin $(BUILD)/game.bin $(BUILD)/aga.bin tools/make_adf.py
+	python3 tools/make_adf.py $(BUILD)/boot.bin $(BUILD)/game.bin $(BUILD)/aga.bin $@
 
 clean:
 	rm -rf $(BUILD)

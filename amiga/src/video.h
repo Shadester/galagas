@@ -11,7 +11,9 @@ typedef unsigned long u32;
 #define TOP 28                  /* the play area starts at this line, the hud is above it */
 
 void video_init(void);
+int video_is_aga(void);                              /* 1: an AGA machine plays the AGA game (6 planes, 64 colours) */
 void video_begin(void);                              /* the next frame: clear what the frame before drew in this bitmap */
+int video_can_scroll(void);                          /* 0: no copper scroll (an AGA machine): draw the formation where it is */
 void video_scroll(int d);                            /* the playfield below the hud is shown d pixels to the right (-48 .. 48): draw at x - d */
 void video_end(int title);                           /* show it (at the next vertical blank), with the title or the game palette */
 void video_title(int on);                            /* the title picture on or off in the bitmap (call it in every frame) */
