@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include "game.h"
 #include "art.h"
+#include "art32.h"
 #include "logo.h"
 
 PSP_MODULE_INFO("PSP Galaga", 0, 1, 0);
@@ -45,6 +46,8 @@ static Game g, prev;
 static int running = 1, savedHi;
 static float ia;              /* interpolation between the previous and current 50 Hz tick */
 static float starTime;
+static float shake;            /* screen shake of a dying fighter: the size in pixels, fades out */
+static int flash[NAL];         /* frames of a white flash of an alien that was hit */
 
 /* ------------------------------------------------------------------ audio */
 /* Three SID-like voices mixed in their own thread. The game only queues events. */
@@ -151,7 +154,7 @@ static void saveHighScore(void) {
 
 /* -------------------------------------------------------------- textures */
 enum { X_BEE = 0, X_BFLY = 2, X_BOSS = 4, X_BOSSP = 6, X_PLAYER = 8, X_XA = 9, X_XP = 12 };
-static unsigned int __attribute__((aligned(16))) atlas[256 * 64];   /* 16x16 cells, glow at (0,16) */
+static unsigned int __attribute__((aligned(16))) atlas[512 * 64];   /* 32x32 cells (art32.h), glow at (0,32) */
 static unsigned int __attribute__((aligned(16))) fontTex[128 * 64]; /* ASCII 32..127, 8x8 */
 static unsigned int __attribute__((aligned(16))) logoTex[LOGO_W * LOGO_H];
 
@@ -172,24 +175,24 @@ static unsigned pixelColor(char ch, const unsigned char (*var)[3]) {
     }
     return 0;
 }
-static void cell(int idx, ArtRows rows, const unsigned char (*var)[3]) {
+static void cell(int idx, ArtRows32 rows, const unsigned char (*var)[3]) {
     int x, y;
-    for (y = 0; y < 16; ++y) for (x = 0; x < 16; ++x)
-        atlas[y * 256 + idx * 16 + x] = pixelColor(x < 8 ? rows[y][x] : rows[y][15 - x], var);
+    for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x)
+        atlas[y * 512 + idx * 32 + x] = pixelColor(rows[y][x], var);
 }
 static void buildTextures(void) {
     int i, x, y;
-    cell(X_BEE, art_bee_a, vbee); cell(X_BEE + 1, art_bee_b, vbee);
-    cell(X_BFLY, art_bfly_a, vbfly); cell(X_BFLY + 1, art_bfly_b, vbfly);
-    cell(X_BOSS, art_boss_a, vboss); cell(X_BOSS + 1, art_boss_b, vboss);
-    cell(X_BOSSP, art_boss_a, vbossp); cell(X_BOSSP + 1, art_boss_b, vbossp);
-    cell(X_PLAYER, art_player, vbee);
-    cell(X_XA, art_xa0, vbee); cell(X_XA + 1, art_xa1, vbee); cell(X_XA + 2, art_xa2, vbee);
-    cell(X_XP, art_xp0, vbee); cell(X_XP + 1, art_xp1, vbee); cell(X_XP + 2, art_xp2, vbee); cell(X_XP + 3, art_xp3, vbee);
+    cell(X_BEE, art32_bee_a, vbee); cell(X_BEE + 1, art32_bee_b, vbee);
+    cell(X_BFLY, art32_bfly_a, vbfly); cell(X_BFLY + 1, art32_bfly_b, vbfly);
+    cell(X_BOSS, art32_boss_a, vboss); cell(X_BOSS + 1, art32_boss_b, vboss);
+    cell(X_BOSSP, art32_boss_a, vbossp); cell(X_BOSSP + 1, art32_boss_b, vbossp);
+    cell(X_PLAYER, art32_player, vbee);
+    cell(X_XA, art32_xa0, vbee); cell(X_XA + 1, art32_xa1, vbee); cell(X_XA + 2, art32_xa2, vbee);
+    cell(X_XP, art32_xp0, vbee); cell(X_XP + 1, art32_xp1, vbee); cell(X_XP + 2, art32_xp2, vbee); cell(X_XP + 3, art32_xp3, vbee);
     for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x) {   /* soft radial glow */
         float dx = (x - 15.5f) / 16, dy = (y - 15.5f) / 16, d = 1 - sqrtf(dx * dx + dy * dy);
         int a = d <= 0 ? 0 : (int)(255 * d * d);
-        atlas[(16 + y) * 256 + x] = RGBA(255, 255, 255, a);
+        atlas[(32 + y) * 512 + x] = RGBA(255, 255, 255, a);
     }
     for (i = 0; i < 96; ++i) for (y = 0; y < 8; ++y) for (x = 0; x < 8; ++x)
         fontTex[((i / 16) * 8 + y) * 128 + (i % 16) * 8 + x] = (msx[(i + 32) * 8 + y] & (0x80 >> x)) ? 0xffffffffu : 0;
@@ -207,7 +210,7 @@ static void useTex(int t) {
     curTex = t;
     if (t == TX_NONE) { sceGuDisable(GU_TEXTURE_2D); return; }
     sceGuEnable(GU_TEXTURE_2D);
-    if (t == TX_ATLAS) sceGuTexImage(0, 256, 64, 256, atlas);
+    if (t == TX_ATLAS) sceGuTexImage(0, 512, 64, 512, atlas);
     else if (t == TX_FONT) sceGuTexImage(0, 128, 64, 128, fontTex);
     else sceGuTexImage(0, LOGO_W, LOGO_H, LOGO_W, logoTex);
 }
@@ -245,15 +248,15 @@ static void trap(float cx, float y0, float hw0, float y1, float hw1, unsigned c0
     v[0].z = v[1].z = v[2].z = v[3].z = 0;
     sceGuDrawArray(GU_TRIANGLE_STRIP, GU_COLOR_8888 | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 4, NULL, v);
 }
-/* Atlas cell centred at (cx, cy), drawn size x size. */
+/* Atlas cell centred at (cx, cy), drawn size x size (32: one texel for a pixel; 64: every texel twice). */
 static void spr(int idx, float cx, float cy, float size, unsigned tint) {
     TVert *v;
     useTex(TX_ATLAS);
     v = sceGuGetMemory(2 * sizeof *v);
     sceGuColor(tint);
-    v[0].u = idx * 16; v[0].v = 0; v[1].u = idx * 16 + 16; v[1].v = 16;
-    v[0].x = (short)(cx - size / 2); v[0].y = (short)(cy - size / 2);
-    v[1].x = (short)(cx + size / 2); v[1].y = (short)(cy + size / 2);
+    v[0].u = idx * 32; v[0].v = 0; v[1].u = idx * 32 + 32; v[1].v = 32;
+    v[0].x = (short)lrintf(cx - size / 2); v[0].y = (short)lrintf(cy - size / 2);
+    v[1].x = v[0].x + (short)size; v[1].y = v[0].y + (short)size;
     v[0].z = v[1].z = 0;
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, v);
 }
@@ -262,7 +265,7 @@ static void glow(float cx, float cy, float size, unsigned tint) {
     useTex(TX_ATLAS);
     v = sceGuGetMemory(2 * sizeof *v);
     sceGuColor(tint);
-    v[0].u = 0; v[0].v = 16; v[1].u = 32; v[1].v = 48;
+    v[0].u = 0; v[0].v = 32; v[1].u = 32; v[1].v = 64;
     v[0].x = (short)(cx - size / 2); v[0].y = (short)(cy - size / 2);
     v[1].x = (short)(cx + size / 2); v[1].y = (short)(cy + size / 2);
     v[0].z = v[1].z = 0;
@@ -291,9 +294,11 @@ static void text(int x, int y, int scale, const char *s, unsigned color) {
 }
 static void ctext(int y, int scale, const char *s, unsigned color) { text((SCREEN_W - textW(s, scale)) / 2, y, scale, s, color); }
 
-/* C64 sprite coordinates to screen. The 320x200 play area is scaled by 1.36 to 435x272. */
-static float fx(float x) { return 22.5f + (x - 24) * 1.36f; }
-static float fy(float y) { return 20 + (y - 50) * 1.27f; }
+/* C64 sprite coordinates to screen. The 320x200 play area is scaled by 1.25 (square pixels) to 400x250, in the middle of the 480 pixels; the sprites are drawn 1:1. */
+#define PLAY_X0 40
+#define PLAY_SC 1.25f
+static float fx(float x) { return PLAY_X0 + (x - 24) * PLAY_SC; }
+static float fy(float y) { return 20 + (y - 50) * PLAY_SC; }
 static float lerpi(int a, int b) { return abs(b - a) > 40 ? (float)b : a + (b - a) * ia; }
 
 /* ------------------------------------------------------------- particles */
@@ -330,7 +335,7 @@ static void drawStars(void) {
     for (i = 0; i < 100; ++i) {
         unsigned h = (unsigned)i * 2654435761u;
         int layer = i < 12 ? 0 : i < 40 ? 1 : i < 70 ? 2 : 3;
-        float x = 22 + (h >> 8) % 436, y = fmodf(((h >> 20) % SCREEN_H) + starTime * speed[layer], SCREEN_H);
+        float x = PLAY_X0 + (h >> 8) % 400, y = fmodf(((h >> 20) % SCREEN_H) + starTime * speed[layer], SCREEN_H);
         float tw = .65f + .35f * sinf(starTime * .12f + i * 1.7f);
         int b = (int)(bright[layer] * tw), sz = layer == 0 ? 2 : 1;
         unsigned col = i % 5 == 0 ? RGB(b, b * 3 / 4, b / 3) : i % 7 == 0 ? RGB(b / 2, b * 3 / 4, b) : RGB(b, b, b);
@@ -341,9 +346,15 @@ static void drawBackground(void) {
     vgrad(0, 0, SCREEN_W, SCREEN_H, RGB(6, 8, 30), RGB(0, 0, 6));
     vgrad(0, 160, SCREEN_W, 112, RGBA(40, 20, 90, 0), RGBA(40, 20, 90, 55));
 }
+/* The play area has dark side strips, and a panel behind the hud. */
+static void drawFrame(void) {
+    const int x1 = PLAY_X0 + 400;
+    rect(0, 0, PLAY_X0 - 4, SCREEN_H, RGBA(0, 0, 14, 190)); rect(x1 + 4, 0, SCREEN_W - x1 - 4, SCREEN_H, RGBA(0, 0, 14, 190));
+    vgrad(0, 0, SCREEN_W, 30, RGBA(0, 0, 24, 220), RGBA(0, 0, 24, 120));
+}
 static void drawFighter(float cx, float cy, unsigned tint) {
     glow(cx, cy + 14, 30, RGBA(80, 160, 255, 70));
-    spr(X_PLAYER, cx, cy, 24, tint);
+    spr(X_PLAYER, cx, cy, 32, tint);
 }
 static void drawBeam(void) {
     const Alien *b = &g.al[g.capBoss];
@@ -353,8 +364,8 @@ static void drawBeam(void) {
     blendAdd();
     for (r = 0; r < n; ++r) {
         int c = (r + (g.frame >> 2)) & 3;
-        float hw0 = (2 + r) * 8 * 1.36f * .5f + 6, hw1 = (3 + r) * 8 * 1.36f * .5f + 6;
-        float y0 = top + r * 8 * 1.36f, y1 = y0 + 8 * 1.36f;
+        float hw0 = (2 + r) * 8 * PLAY_SC * .5f + 6, hw1 = (3 + r) * 8 * PLAY_SC * .5f + 6;
+        float y0 = top + r * 8 * PLAY_SC, y1 = y0 + 8 * PLAY_SC;
         trap(cx, y0, hw0, y1, hw1, RGBA(pulse[c][0], pulse[c][1], pulse[c][2], 150), RGBA(pulse[c][0], pulse[c][1], pulse[c][2], 150));
         rect(cx - hw0, y0, 2, y1 - y0, RGBA(200, 240, 255, 120)); rect(cx + hw0 - 2, y0, 2, y1 - y0, RGBA(200, 240, 255, 120));
     }
@@ -372,13 +383,14 @@ static void drawAliens(void) {
         if (a->st == A_EXPLODE) {
             int f = 2 - (a->timer >> 2);
             glow(cx, cy, 52, RGBA(255, 140, 40, 150 - f * 40));
-            spr(X_XA + f, cx, cy, 36, 0xffffffff);
+            spr(X_XA + f, cx, cy, 32, 0xffffffff);
             continue;
         }
         if (a->type == T_BOSS) {
-            spr((a->hp == 1 && !g.challenge ? X_BOSSP : X_BOSS) + flap, cx, cy, 34, 0xffffffff);
+            spr((a->hp == 1 && !g.challenge ? X_BOSSP : X_BOSS) + flap, cx, cy, 32, 0xffffffff);
             if (g.cap == C_CARRY && g.capBoss == i && y >= 32) drawFighter(cx, fy(y - 16 + 7), RGB(255, 110, 110));
         } else spr((a->type == T_BUTTERFLY ? X_BFLY : X_BEE) + flap, cx, cy, 32, 0xffffffff);
+        if (flash[i] > 0) { blendAdd(); spr((a->type == T_BOSS ? X_BOSS : a->type == T_BUTTERFLY ? X_BFLY : X_BEE) + flap, cx, cy, 32, RGBA(255, 255, 255, 40 * flash[i])); blendNormal(); }
     }
 }
 static void drawShots(void) {
@@ -386,6 +398,7 @@ static void drawShots(void) {
     for (i = 0; i < 4; ++i) if (g.ps[i].act) {
         float cx = fx(lerpi(prev.ps[i].x, g.ps[i].x) + 9), cy = fy(lerpi(prev.ps[i].y, g.ps[i].y) + 6);
         blendAdd(); glow(cx, cy, 22, RGBA(80, 200, 255, 160)); blendNormal();
+        blendAdd(); rect(cx - 1, cy + 6, 2, 10, RGBA(80, 200, 255, 90)); rect(cx - .5f, cy + 16, 1, 10, RGBA(80, 200, 255, 40)); blendNormal();
         rect(cx - 1.5f, cy - 6, 3, 12, RGB(220, 250, 255)); rect(cx - 1, cy - 6, 2, 4, RGB(255, 255, 255));
     }
     for (i = 0; i < EBN; ++i) if (g.eb[i].act) {
@@ -401,7 +414,7 @@ static void drawPlayer(void) {
         int f = 3 - (g.stateTimer >> 4);
         float cx = fx(g.px + 12 + (g.dual ? 8 : 0));
         glow(cx, cy, 70 + f * 14, RGBA(255, 200, 100, 120 - f * 20));
-        spr(X_XP + f, cx, cy, 52, 0xffffffff);
+        spr(X_XP + f, cx, cy, 64, 0xffffffff);
         return;
     }
     if (!show || (g.state == S_PLAY && (g.invuln & 4))) return;
@@ -416,7 +429,7 @@ static void drawHud(void) {
     text(10, 3, 1, "SCORE", RGB(255, 80, 80)); snprintf(s, sizeof s, "%06d", g.score); text(10, 12, 2, s, RGB(255, 255, 255));
     text(140, 3, 1, "HI-SCORE", RGB(255, 80, 80)); snprintf(s, sizeof s, "%06d", g.hi); text(140, 12, 2, s, RGB(255, 255, 255));
     text(SCREEN_W - 52, 3, 1, "STAGE", RGB(255, 80, 80)); snprintf(s, sizeof s, "%02d", g.stage); text(SCREEN_W - 52, 12, 2, s, RGB(255, 255, 255));
-    for (i = 0; i < g.lives && i < 9; ++i) drawFighter(270 + i * 19, 14, 0xffffffff);
+    for (i = 0; i < g.lives && i < 9; ++i) spr(X_PLAYER, 262 + i * 18, 14, 16, 0xffffffff);
 }
 static void drawMessages(void) {
     char s[32];
@@ -463,8 +476,8 @@ static void drawTitle(void) {
     for (i = 0; i < 5; ++i) {
         float cx = 120 + i * 60, cy = 128 + sinf(starTime * .08f + i) * 4;
         int fl = ((int)(starTime * .06f)) & 1;
-        if (i == 0) spr(X_BOSS + fl, cx, cy, 34, 0xffffffff);
-        else if (i == 1) spr(X_BOSSP + fl, cx, cy, 34, 0xffffffff);
+        if (i == 0) spr(X_BOSS + fl, cx, cy, 32, 0xffffffff);
+        else if (i == 1) spr(X_BOSSP + fl, cx, cy, 32, 0xffffffff);
         else if (i == 2) spr(X_BFLY + fl, cx, cy, 32, 0xffffffff);
         else if (i == 3) spr(X_BEE + fl, cx, cy, 32, 0xffffffff);
         else drawFighter(cx, cy, 0xffffffff);
@@ -477,20 +490,27 @@ static void drawTitle(void) {
 
 static void detectEffects(void) {
     int i;
+    for (i = 0; i < NAL; ++i) if (g.al[i].st != A_DEAD && g.al[i].hp < prev.al[i].hp && prev.al[i].st != A_DEAD) flash[i] = 5;
     for (i = 0; i < NAL; ++i) if (g.al[i].st == A_EXPLODE && prev.al[i].st != A_EXPLODE)
         burst(fx(g.al[i].x + 12), fy(g.al[i].y + 6), 14, 3.2f, palAlien, 4);
-    if (g.state == S_DYING && prev.state != S_DYING && !g.dyingQuiet) burst(fx(g.px + 12), fy(g.py + 7), 40, 5, palShip, 4);
+    if (g.state == S_DYING && prev.state != S_DYING && !g.dyingQuiet) { burst(fx(g.px + 12), fy(g.py + 7), 40, 5, palShip, 4); shake = 7; }
     if (g.state == S_CAPTURED && prev.state != S_CAPTURED) burst(fx(g.px + 12), fy(g.py + 7), 14, 2, palAlien + 2, 2);
     if (g.cap == C_NONE && prev.cap == C_RESCUE && g.dual) burst(fx(g.px + 20), fy(g.py + 7), 20, 3, palShip + 1, 3);
 }
 static void render(void) {
     sceGuStart(GU_DIRECT, guList);
+    {
+        int sx = shake > .5f ? (int)((rand() % 3 - 1) * shake) : 0, sy = shake > .5f ? (int)((rand() % 3 - 1) * shake) : 0;
+        sceGuOffset(2048 - SCREEN_W / 2 + sx, 2048 - SCREEN_H / 2 + sy);
+        if (shake > 0) shake *= .9f;
+        for (int i = 0; i < NAL; ++i) if (flash[i] > 0) --flash[i];
+    }
     curTex = -1; useTex(TX_NONE);
     sceGuDisable(GU_DEPTH_TEST); sceGuEnable(GU_BLEND); blendNormal();
     sceGuShadeModel(GU_SMOOTH);
     sceGuTexMode(GU_PSM_8888, 0, 0, 0);
     sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA); sceGuTexFilter(GU_NEAREST, GU_NEAREST); sceGuTexWrap(GU_CLAMP, GU_CLAMP);
-    drawBackground(); drawStars();
+    drawBackground(); drawStars(); drawFrame();
     if (g.state == S_TITLE) drawTitle();
     else {
         if (g.cap == C_BEAM || g.cap == C_PULL) drawBeam();
@@ -582,7 +602,7 @@ int main(void) {
         }
         ia = g.paused ? 1.0f : acc / 60.0f;
         audioMute = g.paused;
-        if (!g.paused) starTime += 50.0f / 60.0f;
+        if (!g.paused) starTime += (g.state == S_INTRO ? 3.0f : 1.0f) * 50.0f / 60.0f;
         render();
 #ifdef AUTOPLAY
         if (++frameNo >= SHOT_FROM && (frameNo - SHOT_FROM) % SHOT_EVERY == 0 && (frameNo - SHOT_FROM) / SHOT_EVERY < SHOT_MAX) dumpFrame((frameNo - SHOT_FROM) / SHOT_EVERY);
