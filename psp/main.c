@@ -153,42 +153,36 @@ static void saveHighScore(void) {
 }
 
 /* -------------------------------------------------------------- textures */
+enum { X2_SHOT = 1, X2_BOMB = 2 };                         /* the second row of the atlas (the glow is at 0): the shot, the bomb (2 frames) */
 enum { X_BEE = 0, X_BFLY = 2, X_BOSS = 4, X_BOSSP = 6, X_PLAYER = 8, X_XA = 9, X_XP = 12 };
 static unsigned int __attribute__((aligned(16))) atlas[512 * 64];   /* 32x32 cells (art32.h), glow at (0,32) */
 static unsigned int __attribute__((aligned(16))) fontTex[128 * 64]; /* ASCII 32..127, 8x8 */
 static unsigned int __attribute__((aligned(16))) logoTex[LOGO_W * LOGO_H];
 
-static const unsigned char vbee[3][3] = {{70,130,255},{150,200,255},{30,60,190}};
-static const unsigned char vbfly[3][3] = {{255,60,60},{255,150,130},{160,20,40}};
-static const unsigned char vboss[3][3] = {{60,220,90},{170,255,160},{20,130,50}};
-static const unsigned char vbossp[3][3] = {{170,80,255},{215,165,255},{100,40,170}};
-static unsigned pixelColor(char ch, const unsigned char (*var)[3]) {
-    switch (ch) {
-    case 'm': return RGB(var[0][0], var[0][1], var[0][2]);
-    case 'M': return RGB(var[1][0], var[1][1], var[1][2]);
-    case 'n': return RGB(var[2][0], var[2][1], var[2][2]);
-    case 'y': return RGB(255, 220, 60);  case 'Y': return RGB(200, 140, 20);
-    case 'c': return RGB(80, 230, 255);  case 'w': return RGB(255, 255, 255);
-    case 'k': return RGB(25, 25, 50);    case 'o': return RGB(255, 140, 30);
-    case 'r': return RGB(255, 60, 60);   case 'b': return RGB(60, 110, 255);
-    case 'g': return RGB(170, 170, 190);
-    }
-    return 0;
-}
-static void cell(int idx, ArtRows32 rows, const unsigned char (*var)[3]) {
+static void cell(int idx, ArtRows32 rows) {                  /* art32.h: letters; art32_rgb: the colour of each */
     int x, y;
-    for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x)
-        atlas[y * 512 + idx * 32 + x] = pixelColor(rows[y][x], var);
+    for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x) {
+        unsigned char ch = (unsigned char)rows[y][x];
+        atlas[y * 512 + idx * 32 + x] = ch == '.' ? 0 : RGB(art32_rgb[ch][0], art32_rgb[ch][1], art32_rgb[ch][2]);
+    }
+}
+static void cell2(int idx, ArtRows32 rows) {
+    int x, y;
+    for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x) {
+        unsigned char ch = (unsigned char)rows[y][x];
+        atlas[(32 + y) * 512 + idx * 32 + x] = ch == '.' ? 0 : RGB(art32_rgb[ch][0], art32_rgb[ch][1], art32_rgb[ch][2]);
+    }
 }
 static void buildTextures(void) {
     int i, x, y;
-    cell(X_BEE, art32_bee_a, vbee); cell(X_BEE + 1, art32_bee_b, vbee);
-    cell(X_BFLY, art32_bfly_a, vbfly); cell(X_BFLY + 1, art32_bfly_b, vbfly);
-    cell(X_BOSS, art32_boss_a, vboss); cell(X_BOSS + 1, art32_boss_b, vboss);
-    cell(X_BOSSP, art32_boss_a, vbossp); cell(X_BOSSP + 1, art32_boss_b, vbossp);
-    cell(X_PLAYER, art32_player, vbee);
-    cell(X_XA, art32_xa0, vbee); cell(X_XA + 1, art32_xa1, vbee); cell(X_XA + 2, art32_xa2, vbee);
-    cell(X_XP, art32_xp0, vbee); cell(X_XP + 1, art32_xp1, vbee); cell(X_XP + 2, art32_xp2, vbee); cell(X_XP + 3, art32_xp3, vbee);
+    cell(X_BEE, art32_bee_a); cell(X_BEE + 1, art32_bee_b);
+    cell(X_BFLY, art32_bfly_a); cell(X_BFLY + 1, art32_bfly_b);
+    cell(X_BOSS, art32_boss_a); cell(X_BOSS + 1, art32_boss_b);
+    cell(X_BOSSP, art32_bossp_a); cell(X_BOSSP + 1, art32_bossp_b);
+    cell(X_PLAYER, art32_player);
+    cell(X_XA, art32_xa0); cell(X_XA + 1, art32_xa1); cell(X_XA + 2, art32_xa2);
+    cell(X_XP, art32_xp0); cell(X_XP + 1, art32_xp1); cell(X_XP + 2, art32_xp2); cell(X_XP + 3, art32_xp3);
+    cell2(X2_SHOT, art32_shot); cell2(X2_BOMB, art32_bomb_a); cell2(X2_BOMB + 1, art32_bomb_b);
     for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x) {   /* soft radial glow */
         float dx = (x - 15.5f) / 16, dy = (y - 15.5f) / 16, d = 1 - sqrtf(dx * dx + dy * dy);
         int a = d <= 0 ? 0 : (int)(255 * d * d);
@@ -249,17 +243,18 @@ static void trap(float cx, float y0, float hw0, float y1, float hw1, unsigned c0
     sceGuDrawArray(GU_TRIANGLE_STRIP, GU_COLOR_8888 | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 4, NULL, v);
 }
 /* Atlas cell centred at (cx, cy), drawn size x size (32: one texel for a pixel; 64: every texel twice). */
-static void spr(int idx, float cx, float cy, float size, unsigned tint) {
+static void sprRow(int idx, int row, float cx, float cy, float size, unsigned tint) {
     TVert *v;
     useTex(TX_ATLAS);
     v = sceGuGetMemory(2 * sizeof *v);
     sceGuColor(tint);
-    v[0].u = idx * 32; v[0].v = 0; v[1].u = idx * 32 + 32; v[1].v = 32;
+    v[0].u = idx * 32; v[0].v = row * 32; v[1].u = idx * 32 + 32; v[1].v = row * 32 + 32;
     v[0].x = (short)lrintf(cx - size / 2); v[0].y = (short)lrintf(cy - size / 2);
     v[1].x = v[0].x + (short)size; v[1].y = v[0].y + (short)size;
     v[0].z = v[1].z = 0;
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, v);
 }
+static void spr(int idx, float cx, float cy, float size, unsigned tint) { sprRow(idx, 0, cx, cy, size, tint); }
 static void glow(float cx, float cy, float size, unsigned tint) {
     TVert *v;
     useTex(TX_ATLAS);
@@ -397,14 +392,13 @@ static void drawShots(void) {
     int i;
     for (i = 0; i < 4; ++i) if (g.ps[i].act) {
         float cx = fx(lerpi(prev.ps[i].x, g.ps[i].x) + 9), cy = fy(lerpi(prev.ps[i].y, g.ps[i].y) + 6);
-        blendAdd(); glow(cx, cy, 22, RGBA(80, 200, 255, 160)); blendNormal();
-        blendAdd(); rect(cx - 1, cy + 6, 2, 10, RGBA(80, 200, 255, 90)); rect(cx - .5f, cy + 16, 1, 10, RGBA(80, 200, 255, 40)); blendNormal();
-        rect(cx - 1.5f, cy - 6, 3, 12, RGB(220, 250, 255)); rect(cx - 1, cy - 6, 2, 4, RGB(255, 255, 255));
+        blendAdd(); glow(cx, cy, 26, RGBA(80, 200, 255, 130)); blendNormal();
+        sprRow(X2_SHOT, 1, cx, cy + 4, 32, 0xffffffff);
     }
     for (i = 0; i < EBN; ++i) if (g.eb[i].act) {
         float cx = fx(lerpi(prev.eb[i].x, g.eb[i].x) + 12), cy = fy(lerpi(prev.eb[i].y, g.eb[i].y) + 4);
-        blendAdd(); glow(cx, cy, 26, RGBA(255, 70, 50, 180)); blendNormal();
-        rect(cx - 2, cy - 5, 4, 10, RGB(255, 150, 120)); rect(cx - 1, cy - 4, 2, 8, RGB(255, 240, 160));
+        blendAdd(); glow(cx, cy, 26, RGBA(255, 70, 50, 150)); blendNormal();
+        sprRow(X2_BOMB + ((g.frame >> 2) & 1), 1, cx, cy, 32, 0xffffffff);
     }
 }
 static void drawPlayer(void) {
