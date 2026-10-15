@@ -1,9 +1,10 @@
 # Amiga Galaga: m68k-elf-gcc (Homebrew: m68k-elf-gcc m68k-elf-binutils) -> raw image -> ADF
 CC = m68k-elf-gcc
 EXTRA_CFLAGS =
-CFLAGS = -m68000 -Os -ffreestanding -fno-pic -Wall -Wextra -Wno-unused-parameter -I ../psp -I src -isystem src/inc $(EXTRA_CFLAGS)
+NPL = 5
+CFLAGS = -m68000 -O3 -ffreestanding -fno-pic -Wall -Wextra -Wno-unused-parameter -I ../psp -I src -isystem src/inc -DNPL=$(NPL) $(EXTRA_CFLAGS)
 BUILD = build
-OBJ = $(BUILD)/hw.o $(BUILD)/main.o $(BUILD)/video.o $(BUILD)/audio.o $(BUILD)/game.o $(BUILD)/libc.o
+OBJ = $(BUILD)/hw.o $(BUILD)/main.o $(BUILD)/video.o $(BUILD)/audio.o $(BUILD)/game.o $(BUILD)/libc.o $(BUILD)/fast.o
 
 all: $(BUILD)/galaga.adf
 
@@ -14,10 +15,10 @@ $(BUILD)/%.o: src/%.c $(wildcard src/*.h) ../psp/game.c ../psp/game.h | $(BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # the rules are the hot code: speed before size
-$(BUILD)/game.o: CFLAGS += -O2
+$(BUILD)/game.o: CFLAGS += -O3
 
 $(BUILD)/%.o: src/%.s | $(BUILD)
-	m68k-elf-as -m68000 --register-prefix-optional -o $@ $<
+	m68k-elf-as -m68000 --register-prefix-optional --defsym NPL=$(NPL) -o $@ $<
 
 $(BUILD)/game.elf: $(OBJ) link.ld
 	$(CC) -m68000 -nostdlib -T link.ld -o $@ $(OBJ) -lgcc -Wl,-Map=$(BUILD)/game.map

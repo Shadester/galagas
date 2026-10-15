@@ -7,11 +7,12 @@ built here without floats. `README.md` has the status, controls, commands and th
 
 ```sh
 tools/setup-macos.sh                  # once: m68k-elf-gcc, binutils, FS-UAE, Pillow (Homebrew)
-make                                  # build/galaga.adf (m68k-elf-gcc, objcopy, tools/make_adf.py)
+make                                  # build/galaga.adf (m68k-elf-gcc -O3, objcopy, tools/make_adf.py); NPL=4 builds 4 planes (speed test only: the art is for 5)
 tools/run.sh                          # build and run it in FS-UAE (brew install --cask fs-uae-emulator)
 make web                              # docs/galaga.adz for the play link in the READMEs
 python3 tests/test_selftest.py [n]    # the 68000 in vAmigaWeb vs the Mac, 4 scenarios (about 10 s)
 python3 tests/shots.py [--update] [case ...]   # screenshots in vAmigaWeb; look at new refs before you commit them
+python3 tests/compare.py [--ref COMMIT] [--flags -DNOASM] [--quick]   # a speed change must not change a picture: builds the reference commit (worktree) and this tree, freezes both at 17 tick counts, compares pixels
 ```
 
 - The tests need `playwright` (`pip install playwright pillow && playwright install chromium`) and `m68k-elf-gcc`.
@@ -49,7 +50,7 @@ python3 tests/shots.py [--update] [case ...]   # screenshots in vAmigaWeb; look 
 - **Keyboard:** CIA-A serial port, level 2 interrupt (`kbd` in `hw.s`). The key code is `~(sdr rotated right by 1)`, bit 7 = release.
   Acknowledge it with a pulse of about 85 microseconds on bit 6 of CRA.
 - **Speed:** all RAM is chip RAM and the screen DMA (5 bitplanes) takes most of its cycles: the 68000 runs at about 0.5 million
-  instructions a second, and the blitter needs about 0.85 ms for a sprite and 0.35 ms to clear one. A tick of the game is 5 ms, so one tick
+  instructions a second, and the blitter needs about 0.85 ms for a sprite and 0.35 ms to clear one. A tick of the game is 20 ms (its CPU cost 4-6 ms), so one tick
   and one picture must stay far below 20 ms. What is done about it:
   the stars are hardware sprites 4 and 5 (the CPU needed 25 ms for 24 star pixels); the hud is a static layer (`video_static_begin`, drawn again
   only when a number changes); a sprite that did not move is not drawn again, unless something is cleared or drawn over it (`draw_sprites`:
@@ -61,6 +62,8 @@ python3 tests/shots.py [--update] [case ...]   # screenshots in vAmigaWeb; look 
   formation moves 28 sprites at once every 9 ticks, and a 25 ms picture follows (now the copper scroll does the sway: while the aliens fly in and sway, 177 loops instead of 145 for 300 ticks; the other scenes are the same). Text is slow too (a line of 20 characters is about
   20 ms with the CPU): keep text out of the frames, do not print numbers every frame.
 - **Where the time goes** (`-DPROFILE` also shows `T` = beam lines/16 that the ticks needed and `D` = the pictures): the game ticks alone keep 50 pictures a second; a picture with 30 moving aliens needs 20-25 ms, a still formation 6 ms. The blitter is not the whole story: with the blits switched off a busy scene reaches only 80 %. Tried and not kept: a copy blit (B to D, 2 channels) instead of the cookie cut for sprites that are alone in their cells: no faster. Text is slow because the CPU gets few chip RAM cycles (about 20 ms for 20 characters); a cache of unchanged text, or cells made in advance, would help the intro and result screens.
+- **Where the time goes (2026-10, measured with `-DPROFILE -DPROFILE2 -DAUTOPLAY -DTITLE_HOLD=0 -DHALT=n [-DPROF_FROM=m]`)**: a tick of the game is 20 ms (one per vertical blank); its CPU cost is 4-6 ms. The 68000 gets about 0.6 million instructions a second: one unchanged sprite slot costs about 10 us even in assembly, a moving sprite about 1.4 ms (clear + cookie-cut, the blitter is the limit: it gets about 40 % of the chip bus cycles with 5 planes). A busy scene has 6-10 moving sprites a picture, so it misses the 50 fps beat in 1 of 4 pictures. 4 bitplanes would give about +20-27 % (tested with `make NPL=4`; rejected: 16 colours). `PROFILE2` also shows the loops that took 1, 2, 3 vertical blanks and the number of sprites that changed in a picture.
+- **fast.s** (assembly, with the same code in C under `-DNOASM`): `stars_layer`, `alien_wants` (main.c), and the sprite passes of `draw_sprites`: `sprites_scan` (which slots changed; a `Place` has everything the blitter needs, computed once; a slot has two places, the new and the old one), `sprites_mark` (the 16 x 16 cells; a kept sprite in a marked cell is drawn again; quick test with the marked rows and columns), `sprites_clear`, `sprites_blit` (in slot order: later slots are in front). The struct offsets are checked by `_Static_assert`s in video.c and main.c. Text and the hud use the blitter too: every character is a sprite (`glyph_list` in tools/gen_assets.py); the hud draws a part again in a bitmap only when its value changed (`video_hud`).
 - **16-bit friendly code:** a 32-bit `*` and `/` call libgcc (slow on a 68000). The scripted-game hash uses rotate / xor / add for this reason.
 
 ## vAmigaWeb (the test emulator)

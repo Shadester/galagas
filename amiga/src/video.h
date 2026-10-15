@@ -23,9 +23,9 @@ static inline void video_bob(int slot, int id, int x, int y) { want[slot].id = i
 void video_static_bob(int id, int x, int y);         /* in the static layer: drawn at once */
 #define STAR_ROWS (SCREEN_H - 16 - TOP)                /* the offsets of the layers wrap at this number */
 void video_stars(int slow, int fast);                /* hardware sprites: the starfield, scrolled by these two offsets (negative: no stars) */
-void video_text(const char *s, int x, int y, int colour);   /* x is rounded down to a multiple of 8 */
+void video_text(const char *s, int x, int y, int colour);   /* colour: pen 1 (white), 2 (red) or 20 (cyan) */
 void video_beam(int x, int y, int rows, int phase);  /* the tractor beam: rows of 8 pixel cells, widening, under x, y */
-int video_static_begin(int a, int b, int c, int d);   /* 1: draw the hud (text, lives) now, then call video_static_end() */
+int video_hud(int part, int value);                  /* 1: this part of the hud (0 labels, 1 score, 2 hi-score, 3 stage, 4 lives; call 0 first) is not in this bitmap with this value: draw it now, then call video_static_end() */
 void video_static_end(void);
 void video_wait_blitter(void);
 #endif

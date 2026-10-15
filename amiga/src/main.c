@@ -1,5 +1,6 @@
 /* Galaga for the Amiga: the main loop, input, and what the game state looks like on the screen.
  * The rules are psp/game.c (src/game.c). One tick of the game for each vertical blank: 50 a second, as on the C64. */
+#include <stddef.h>
 #include "game.h"
 #include "video.h"
 #include "audio.h"
@@ -24,6 +25,9 @@ static void run_selftest(void) {
 }
 #endif
 
+#ifndef PROF_FROM
+#define PROF_FROM 0              /* PROFILE: the ticks before this one are not measured */
+#endif
 #ifndef TITLE_HOLD
 #define TITLE_HOLD 150          /* AUTOPLAY: ticks until it presses fire on the title screen */
 #endif
@@ -68,15 +72,19 @@ static int scroll;                                /* the formation's sway (formD
 static void draw_hud(const Game *g) {
     char b[16];
     int i;
-    if (!video_static_begin(g->score, g->hi, g->stage, g->lives)) return;      /* the hud stays in the bitmap until a number changes */
-    video_text("SCORE", 8, 2, RED);
-    video_text("HI-SCORE", 128, 2, RED);
-    video_text("STAGE", 256, 2, RED);
-    put_num(b, g->score, 6); b[6] = 0; video_text(b, 8, 12, WHITE);
-    put_num(b, g->hi, 6); b[6] = 0; video_text(b, 136, 12, WHITE);
-    put_num(b, g->stage, 2); b[2] = 0; video_text(b, 264, 12, WHITE);
-    for (i = 0; i < g->lives && i < 8; ++i) video_static_bob(SPR_LIFE, 64 + (i & 3) * 14, 2 + (i >> 2) * 13);   /* the lives: two rows of four, in the hud */
-    video_static_end();
+    if (video_hud(0, 0)) {                              /* each part stays in the bitmap until its number changes */
+        video_text("SCORE", 8, 2, RED);
+        video_text("HI-SCORE", 128, 2, RED);
+        video_text("STAGE", 256, 2, RED);
+        video_static_end();
+    }
+    if (video_hud(1, g->score)) { put_num(b, g->score, 6); b[6] = 0; video_text(b, 8, 12, WHITE); video_static_end(); }
+    if (video_hud(2, g->hi)) { put_num(b, g->hi, 6); b[6] = 0; video_text(b, 136, 12, WHITE); video_static_end(); }
+    if (video_hud(3, g->stage)) { put_num(b, g->stage, 2); b[2] = 0; video_text(b, 264, 12, WHITE); video_static_end(); }
+    if (video_hud(4, g->lives)) {
+        for (i = 0; i < g->lives && i < 8; ++i) video_static_bob(SPR_LIFE, 64 + (i & 3) * 14, 2 + (i >> 2) * 13);   /* two rows of four */
+        video_static_end();
+    }
 }
 
 static void draw_messages(const Game *g) {
@@ -120,12 +128,48 @@ static int loops;                                 /* PROFILE (+ HALT): loops of 
 static u32 vbl_start, vbl_halt;
 static u32 lines_tick, lines_draw;                /* PROFILE: the beam lines (64 us) that the ticks and the picture needed in total */
 extern volatile u32 vbl_count;
-static u32 now_lines(void) { u32 v; do { v = vbl_count; } while (v != vbl_count); return v * 313 + ((REG(0x004) & 1) << 8 | REG(0x006) >> 8); }                   /* the VBLs the game needed for HALT ticks: HALT = 50 a second */
+u32 now_lines(void) { u32 v; do { v = vbl_count; } while (v != vbl_count); return v * 313 + ((REG(0x004) & 1) << 8 | REG(0x006) >> 8); }                   /* the VBLs the game needed for HALT ticks: HALT = 50 a second */
+#endif
+
+#ifdef PROFILE2
+extern u32 prof_acc[12]; extern int prof_on;
+u32 prof_hist[8];                                 /* loops that took n vertical blanks */
+u32 prof_changed; static u32 prof_ch[6];                                 /* video.c: sprites that changed in the last picture */
+static u32 cls_n[2], cls_t[2], cls_d[2], cls_c[2], prev_t, prev_d, prev_c;   /* the loops that took one vertical blank, and the ones that took more: their costs */
+#endif
+/* The aliens of this frame in slots 0 .. NAL - 1 (fast.s has the same in assembly). A slot that shows nothing gets id -1. */
+_Static_assert(sizeof(Alien) == 68 && offsetof(Alien, x) == 0 && offsetof(Alien, y) == 4 && offsetof(Alien, st) == 8 && offsetof(Alien, type) == 12 &&
+               offsetof(Alien, hp) == 16 && offsetof(Alien, timer) == 20 && offsetof(Alien, ent) == 48 && NAL == 40 && TOP == 28 &&
+               SPR_BEE_A == 0 && SPR_BFLY_A == 2 && SPR_BOSS_A == 4 && SPR_BOSSP_A == 6 && SPR_EXPL1 == 12 && A_DEAD == 0 && A_EXPLODE == 4 &&
+               A_ENTER == 6 && T_BOSS == 0 && T_BUTTERFLY == 1 && T_BEE == 2, "fast.s: alien_wants");
+#ifdef NOASM
+static void alien_wants(const Alien *al, Obj *w, int anim, int challenge, int sc) {
+    int i;
+    for (i = 0; i < NAL; ++i) {
+        const Alien *a = &al[i];
+        int id;
+        if (a->st == A_DEAD || (a->st == A_ENTER && a->ent == 0)) { w[i].id = -1; w[i].x = w[i].y = 0; continue; }
+        if (a->st == A_EXPLODE) { int f = 2 - (a->timer >> 2); id = SPR_EXPL1 + (f < 0 ? 0 : f > 2 ? 2 : f); }
+        else if (a->type == T_BOSS && a->hp == 1 && !challenge) id = SPR_BOSSP_A + anim;
+        else id = (a->type == T_BOSS ? SPR_BOSS_A : a->type == T_BUTTERFLY ? SPR_BFLY_A : SPR_BEE_A) + anim;
+        w[i].id = id; w[i].x = a->x - 24 - sc; w[i].y = a->y - 50 + TOP;
+    }
+}
+#else
+void alien_wants(const Alien *al, Obj *w, int anim, int challenge, int sc);
 #endif
 
 static void draw(const Game *g) {
     int i, anim = (g->frame >> 4) & 1;
+#ifdef PROFILE2
+    u32 pstart = now_lines();
+    prof_on = g->frame + 3 < HALT && g->frame + 3 >= PROF_FROM;
+#endif
     video_begin();
+#ifdef PROFILE2
+    if (prof_on) prof_acc[9] += now_lines() - pstart;
+#endif
+    if (g->state == S_TITLE || g->state == S_GAMEOVER) for (i = 0; i < NAL; ++i) { want[i].id = -1; want[i].x = want[i].y = 0; }
     scroll = g->state == S_TITLE ? 0 : g->formDx;
     video_scroll(scroll);
     video_title(g->state == S_TITLE);
@@ -146,15 +190,13 @@ static void draw(const Game *g) {
             const Alien *b = &g->al[g->capBoss];
             video_beam(SX(b->x + 12), TOP + 1 + ((b->y - 36) >> 3) * 8, g->beamLen, (g->frame >> 2) & 3);
         }
-        for (i = 0; i < NAL; ++i) {
-            const Alien *a = &g->al[i];
-            int id;
-            if (a->st == A_DEAD || (a->st == A_ENTER && a->ent == 0)) continue;
-            if (a->st == A_EXPLODE) { int f = 2 - (a->timer >> 2); id = SPR_EXPL1 + (f < 0 ? 0 : f > 2 ? 2 : f); }
-            else if (a->type == T_BOSS && a->hp == 1 && !g->challenge) id = SPR_BOSSP_A + anim;
-            else id = (a->type == T_BOSS ? SPR_BOSS_A : a->type == T_BUTTERFLY ? SPR_BFLY_A : SPR_BEE_A) + anim;
-            video_bob(i, id, SX(a->x), SY(a->y));
-        }
+#ifdef PROFILE2
+        u32 pa = now_lines();
+#endif
+        alien_wants(g->al, want, anim, g->challenge, scroll);
+#ifdef PROFILE2
+        if (prof_on) prof_acc[10] += now_lines() - pa;
+#endif
         if (g->state == S_DYING) {
             if (!g->dyingQuiet) { int f = 3 - (g->stateTimer >> 4); video_bob(SLOT_SHIP, SPR_PEXP1 + (f < 0 ? 0 : f > 3 ? 3 : f), SX(g->px), SY(g->py)); }
         } else if (g->state != S_READY && !(g->invuln & 4)) {
@@ -171,8 +213,18 @@ static void draw(const Game *g) {
         for (i = 0; i < EBN; ++i) if (g->eb[i].act) video_bob(SLOT_EBUL + i, SPR_EBUL, SX(g->eb[i].x + 10), SY(g->eb[i].y - 2));
     }
     draw_messages(g);
+#ifdef PROFILE2
+    if (prof_on) prof_acc[6] += now_lines() - pstart;
+#endif
+#if defined(PROFILE2) && defined(HALT)
+    if (g->frame + 3 >= HALT && loops) { char b[40]; char *p = b; int k; for (k = 0; k < 4; ++k) { p = put_num(p, (int)(prof_acc[k] / loops) % 10000, 4); *p++ = ' '; } *p = 0; video_text(b, 60, 229, WHITE);
+        p = b; for (k = 4; k < 8; ++k) { p = put_num(p, (int)(prof_acc[k] / loops) % 10000, 4); *p++ = ' '; } *p = 0; video_text(b, 60, 238, WHITE);
+        p = b; for (k = 1; k < 5; ++k) { p = put_num(p, (int)prof_hist[k] % 10000, 4); *p++ = ' '; } *p = 0; video_text(b, 60, 220, WHITE);
+        p = b; for (k = 0; k < 6; ++k) { p = put_num(p, (int)prof_ch[k] % 1000, 3); *p++ = ' '; } *p = 0; video_text(b, 60, 184, WHITE);
+        for (k = 0; k < 2; ++k) { u32 q = cls_n[k] ? cls_n[k] : 1; p = b; p = put_num(p, (int)cls_n[k] % 10000, 4); *p++ = ' '; p = put_num(p, (int)(cls_t[k] / q) % 10000, 4); *p++ = ' '; p = put_num(p, (int)(cls_d[k] / q) % 10000, 4); *p++ = ' '; p = put_num(p, (int)(cls_c[k] * 10 / q) % 10000, 4); *p = 0; video_text(b, 60, 202 + 9 * k, WHITE); } }
+#endif
 #if defined(PROFILE) && defined(HALT)
-    if (g->frame + 3 >= HALT) { char b[40] = "LOOPS "; char *p = put_num(b + 6, loops, 4); *p++ = ' '; *p++ = 'T'; p = put_num(p, (lines_tick >> 4) % 10000, 4); *p++ = ' '; *p++ = 'D'; p = put_num(p, (lines_draw >> 4) % 10000, 4); *p = 0; video_text(b, 60, 244, WHITE); }
+    if (g->frame + 3 >= HALT) { char b[40] = "LOOPS "; char *p = put_num(b + 6, loops, 4); *p++ = ' '; *p++ = 'T'; p = put_num(p, (lines_tick >> 4) % 10000, 4); *p++ = ' '; *p++ = 'D'; p = put_num(p, (lines_draw >> 4) % 10000, 4); *p = 0; video_text(b, 60, 247, WHITE); }
 #endif
     video_end(0);
 }
@@ -198,9 +250,12 @@ int main(void) {
         int n;
         while ((now = vbl_count) == last) ;
         n = now - last > 6 ? 6 : now - last;              /* a slow frame: the game catches up, 6 ticks at most */
+#if defined(PROFILE2) && defined(HALT)
+        if (t < HALT && t >= PROF_FROM) { ++prof_hist[n]; if (loops > 1) { int c = n > 1; ++cls_n[c]; cls_t[c] += prev_t; cls_d[c] += prev_d; cls_c[c] += prev_c; } }
+#endif
 #ifdef PROFILE
 #ifdef HALT
-        if (t < HALT) ++loops;                       /* only until the game stops */
+        if (t < HALT && t >= PROF_FROM) ++loops;     /* only until the game stops */
 #else
         ++loops;
 #endif
@@ -237,9 +292,13 @@ int main(void) {
 #ifdef PROFILE
         t2 = now_lines();
 #ifdef HALT
-        if (t < HALT)
+        if (t < HALT && t >= PROF_FROM)
 #endif
         { lines_tick += t1 - t0; lines_draw += t2 - t1; }
+#ifdef PROFILE2
+        prev_t = t1 - t0; prev_d = t2 - t1; prev_c = prof_changed;
+        if (t < HALT && t >= PROF_FROM) ++prof_ch[prof_changed == 0 ? 0 : prof_changed < 3 ? 1 : prof_changed < 6 ? 2 : prof_changed < 11 ? 3 : prof_changed < 21 ? 4 : 5];
+#endif
 #endif
     }
 }
