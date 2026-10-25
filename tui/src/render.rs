@@ -292,9 +292,11 @@ impl Renderer {
             let c: Rgb = if lit { [210, 255, 255] } else { [(60 + t / 5) as u8, (215 - t) as u8, 255] };
             let y = (b.y + 14 + gy - 50) / k;
             let cx = (b.x + 12 - 24) / k;
-            for x in (cx - hw)..=(cx + hw) {
-                let ends = (x - cx).abs() * 2 > hw; // the outer half of a ring
-                let dy = if i < 3 && ends { 1 } else { 0 } - if (x - cx).abs() == hw { 1 } else { 0 }; // the first rings bow down at the ends, every ring curls up at its ends
+            for x in (cx - hw)..(cx + hw) {
+                // 2 hw pixels, like the (even) picture of the boss: the middle is between the pixels cx - 1 and cx, so the ring is symmetric about the boss
+                let ends = (2 * (x - cx) + 1).abs() > hw; // the outer half of a ring
+                let end = x == cx - hw || x == cx + hw - 1;
+                let dy = if i < 3 && ends { 1 } else { 0 } - if end { 1 } else { 0 }; // the first rings bow down at the ends, every ring curls up at its ends
                 cv.set(x, y + dy, c);
             }
         }
