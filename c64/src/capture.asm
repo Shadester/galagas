@@ -165,15 +165,20 @@ beam_erase:
 beam_draw:
     sta bd_chr
     ldx cap_boss
-    lda enemy_x,x           ; Column of the boss centre: (x - 18) / 8
-    sec
-    sbc #18
+    lda enemy_x,x           ; The centre of the boss, in quarter cells: m = (x + 12 - 24 + 2) / 4. m odd: the beam is centred on the cell m / 2, m even: on the line between
+    sec                     ; the cells m / 2 - 1 and m / 2. So the beam is at most 2 pixels off the centre of the boss.
+    sbc #10
     sta bd_col
     lda enemy_x_msb,x
     sbc #0
     lsr
     ror bd_col
-    lsr bd_col
+    lsr
+    ror bd_col
+    lda bd_col
+    and #1
+    eor #1
+    sta bd_half             ; 1: between two cells (one more cell on the left)
     lsr bd_col
     lda enemy_y,x           ; First row: just under the boss
     sec
@@ -187,12 +192,15 @@ beam_draw:
 .row:
     ldx bd_r
     cpx beam_len
-    bcs .end
+    bcc .rowok
+    jmp .end
+.rowok:
     lda hw_tbl,x
     sta bd_hw
     lda bd_col
     sec
     sbc bd_hw
+    sbc bd_half
     bcs .c0ok
     lda #0
 .c0ok:
@@ -211,7 +219,9 @@ beam_draw:
     clc
     adc bd_r
     cmp #25
-    bcs .end
+    bcc .rowin
+    jmp .end
+.rowin:
     tax
     lda row_lo,x
     clc
@@ -247,8 +257,11 @@ beam_draw:
     sta (zp_col),y
     iny
     cpy bd_n
-    beq .cell
-    bcc .cell
+    beq .more
+    bcs .rowdone
+.more:
+    jmp .cell
+.rowdone:
     inc bd_r
     jmp .row
 .end:

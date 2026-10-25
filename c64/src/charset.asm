@@ -55,18 +55,22 @@ beam_chars:
     !byte $80, $ff, $80, $ff, $00, $ff, $00, $ff        ; LOWNEXT_L
     !byte $01, $ff, $01, $ff, $00, $ff, $00, $ff        ; LOWNEXT_R
 
-; The character of cell Y of the row bd_r of the beam: A. The boss is in the column bd_col, the row starts at bd_c0, its half width is bd_hw.
+; The character of cell Y of the row bd_r of the beam: A. The middle is the cell bd_col (bd_half 0) or the line left of it (bd_half 1), the row starts at bd_c0, its half width is bd_hw.
 !zone beam_chr
 beam_chr:
     tya
     clc
     adc bd_c0
     sec
-    sbc bd_col                  ; the distance to the middle: negative = left
+    sbc bd_col                  ; the column - the column of the middle cell (or of the first cell right of the middle line)
     bcs .right
-    eor #$ff
-    clc
-    adc #1
+    eor #$ff                    ; left of it: the distance from the middle line - 1 ...
+    sta temp
+    lda bd_half
+    bne .ml                     ; ... is the distance when the middle is a line between two cells
+    inc temp                    ; ... + 1 when it is a cell
+.ml:
+    lda temp
     ldx #0
     beq .have
 .right:

@@ -17,6 +17,7 @@ bd_col:                !byte 0
 bd_row0:               !byte 0
 bd_r:                  !byte 0
 bd_hw:                 !byte 0
+bd_half:               !byte 0
 bd_c0:                 !byte 0
 bd_n:                  !byte 0
 rs_tx:                 !byte 0
