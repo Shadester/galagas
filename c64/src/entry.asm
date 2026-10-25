@@ -69,19 +69,14 @@ update_entry:
 ; within 3px on both axes it snaps in and becomes a normal formation alien.
 !zone home_step
 home_step:
-    lda enemy_x,x
-    pha
-    lda enemy_x_msb,x
-    pha
-    jsr set_slot_x              ; enemy_x / msb = slot column ...
-    lda enemy_x,x
+    lda base_x,x                ; the slot column, as set_slot_x makes it (9-bit)
+    clc
+    adc form_dx
     sta tgt_x
-    lda enemy_x_msb,x
+    lda form_ext
+    adc base_xh,x
+    and #1
     sta tgt_xh
-    pla                         ; ... and back to where the alien is
-    sta enemy_x_msb,x
-    pla
-    sta enemy_x,x
     lda #0
     sta moved
     lda tgt_x
