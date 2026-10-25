@@ -22,7 +22,7 @@ refresh_anim:
 set_explode:
     lda #4
     sta enemy_state,x
-    lda #11
+    lda #20                     ; the burst lasts 20 ticks in 5 steps of 4 (psp/game.h G_EXPL_TICKS)
     sta enemy_timer,x
     lda #SPR_EXPL1
     sta spr_f,x
@@ -67,15 +67,16 @@ update_sprite_data:
 @p_dying:
     lda dying_quiet
     bne @p_hide                 ; Captured: no explosion
-    lda dying_timer
-    lsr
-    lsr
-    lsr
-    lsr
-    sta temp                    ; 3..0: four explosion frames of 16 game frames
-    lda #SPR_PEXP+3
+    lda #106                    ; the burst is 6 steps of 8 ticks (dying_timer starts at 106), then the ship is gone until it comes back
     sec
-    sbc temp
+    sbc dying_timer
+    lsr
+    lsr
+    lsr
+    cmp #6
+    bcs @p_hide
+    clc
+    adc #SPR_PEXP
     ldx #1                      ; White
 @p_add:
     sta spr_f+VS_PLAYER

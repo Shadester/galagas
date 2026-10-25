@@ -107,24 +107,32 @@ for name, own in (('bee', 'b'), ('bfly', 'r'), ('boss', 'g'), ('bossp', 'p')):
     base = 'boss' if name == 'bossp' else name
     for f in 'ab':
         SPRITES.append((f'{name}_{f}', recolour(c[f'{base}_{f}'], own), 0))
-for n in (1, 2, 3):
-    SPRITES.append((f'expl{n}', recolour(c[f'expl{n}'], 'o'), 0))
-for n in (1, 2, 3, 4):
-    SPRITES.append((f'pexp{n}', halve(recolour(c[f'pexp{n}'], 'o')), 0))
+for n, own in zip((1, 2, 3, 4, 5), 'fowwl'):                         # the 5 steps of an alien's burst (c64/tools/gen_expl.py): the colour of the sprite changes in each step as on the C64
+    SPRITES.append((f'expl{n}', halve(recolour(c[f'expl{n}'], own)), 0))
+for n, own in zip((1, 2, 3, 4, 5, 6), 'wwwwwl'):                     # the 6 steps of the fighter's
+    SPRITES.append((f'pexp{n}', halve(recolour(c[f'pexp{n}'], own)), 0))
 
 
-# Tractor beam: 4 rows (the C64 draws a row of $66 characters per row, 2..5 cells either side of the boss), each
-# 4x4 pixel cell a checkerboard in a shimmering colour; 4 colour phases. id = SP_BEAM + row * 4 + phase.
+# Tractor beam: 4 rows (the C64 draws a row of $66 characters per row, 2..5 cells either side of the boss), each row is 4 pixels high with 2 thin rings; 4 colour phases. id = SP_BEAM + row * 4 + phase.
+def beam_rows(r, hw, phase):
+    """Row r of the tractor beam: 4 pixels high, (2 hw + 1) * 4 wide, 2 thin rings (at y 0 and 2) of a cone: the lower ring spans the row, the upper one 80 percent of it (the arcade's beam is a cone of rings
+    every 2 pixels). Ring k = 2r + j: teal-green near the boss, cyan, blue; every 4th ring is light, and which ones moves down with the phase. The first rings bow down at the ends."""
+    w = (2 * hw + 1) * 4
+    grid = [['.'] * w for _ in range(4)]
+    for j in range(2):
+        k = 2 * r + j
+        half = (w - 1) / 2 * (0.8 + 0.2 * j)
+        pen = 'l' if (k - phase) % 4 == 0 else 'g' if k < 2 else 'c' if k < 5 else 'b'
+        for x in range(w):
+            u = (x - (w - 1) / 2) / half
+            if abs(u) <= 1.0001:
+                y = 2 * j + (1 if k < 2 and abs(u) > 0.6 else 0)
+                grid[y][x] = pen
+    return [''.join(row) for row in grid]
+
 for r, hw in enumerate((2, 3, 4, 5)):
     for phase in range(4):
-        rows = []
-        for y in range(4):
-            line = ''
-            for k in range(2 * hw + 1):
-                cc = 'blcl'[(k + r + phase) & 3]
-                line += ''.join(cc if (x + y) % 2 == 0 else '.' for x in range(4))
-            rows.append(line)
-        SPRITES.append((f'beam_{r}_{phase}', rows, 0))
+        SPRITES.append((f'beam_{r}_{phase}', beam_rows(r, hw, phase), 0))
 
 
 def sprite_data(rows):

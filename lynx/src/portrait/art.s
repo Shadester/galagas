@@ -109,389 +109,421 @@ spr_bossp_b:   ; 7x8 turned
     .byte 5, $77, $78, $75, $00
     .byte 5, $00, $77, $00, $00
     .byte 0
-spr_expl1:   ; 4x4 turned
-    .byte 4, $05, $50, $00
-    .byte 4, $51, $15, $00
-    .byte 4, $51, $15, $00
-    .byte 4, $05, $50, $00
+spr_expl1:   ; 3x3 turned
+    .byte 3, $01, $20
+    .byte 3, $21, $10
+    .byte 3, $02, $00
     .byte 0
-spr_expl2:   ; 8x8 turned
-    .byte 6, $00, $08, $80, $00, $00
-    .byte 6, $52, $85, $58, $25, $00
-    .byte 6, $08, $51, $15, $80, $00
-    .byte 6, $05, $11, $11, $50, $00
-    .byte 6, $05, $11, $11, $50, $00
-    .byte 6, $08, $51, $15, $80, $00
-    .byte 6, $52, $85, $58, $25, $00
-    .byte 6, $00, $08, $80, $00, $00
+spr_expl2:   ; 5x6 turned
+    .byte 4, $00, $10, $00
+    .byte 4, $55, $00, $50
+    .byte 4, $00, $18, $10
+    .byte 4, $11, $11, $50
+    .byte 4, $11, $11, $00
+    .byte 4, $00, $11, $00
     .byte 0
-spr_expl3:   ; 8x8 turned
-    .byte 6, $50, $85, $58, $05, $00
-    .byte 6, $05, $02, $20, $50, $00
-    .byte 6, $00, $50, $05, $00, $00
-    .byte 6, $20, $05, $50, $02, $00
-    .byte 6, $20, $05, $50, $02, $00
-    .byte 6, $00, $50, $05, $00, $00
-    .byte 6, $05, $02, $20, $50, $00
-    .byte 6, $50, $85, $58, $05, $00
+spr_expl3:   ; 6x7 turned
+    .byte 5, $01, $11, $11, $00
+    .byte 5, $51, $11, $44, $00
+    .byte 5, $05, $81, $10, $00
+    .byte 5, $11, $85, $11, $00
+    .byte 5, $05, $11, $00, $00
+    .byte 5, $00, $11, $00, $00
+    .byte 5, $00, $00, $50, $00
+    .byte 0
+spr_expl4:   ; 8x8 turned
+    .byte 6, $00, $11, $11, $00, $00
+    .byte 6, $01, $11, $11, $11, $00
+    .byte 6, $11, $10, $00, $01, $00
+    .byte 6, $11, $00, $00, $11, $00
+    .byte 6, $21, $00, $00, $11, $00
+    .byte 6, $01, $10, $01, $11, $00
+    .byte 6, $01, $21, $10, $10, $00
+    .byte 6, $00, $11, $10, $00, $00
+    .byte 0
+spr_expl5:   ; 8x8 turned
+    .byte 6, $00, $00, $11, $00, $00
+    .byte 6, $01, $00, $10, $11, $00
+    .byte 6, $10, $00, $00, $01, $00
+    .byte 6, $10, $00, $00, $01, $00
+    .byte 6, $00, $00, $00, $11, $00
+    .byte 6, $00, $00, $00, $10, $00
+    .byte 6, $01, $10, $01, $10, $00
+    .byte 6, $00, $11, $10, $00, $00
     .byte 0
 spr_pexp1:   ; 4x4 turned
-    .byte 4, $01, $10, $00
-    .byte 4, $11, $11, $00
-    .byte 4, $11, $11, $00
-    .byte 4, $01, $10, $00
+    .byte 4, $00, $40, $00
+    .byte 4, $41, $14, $00
+    .byte 4, $41, $10, $00
+    .byte 4, $04, $40, $00
     .byte 0
-spr_pexp2:   ; 8x8 turned
-    .byte 6, $00, $05, $50, $00, $00
-    .byte 6, $00, $11, $11, $00, $00
-    .byte 6, $05, $45, $54, $50, $00
-    .byte 6, $51, $11, $11, $15, $00
-    .byte 6, $51, $11, $11, $15, $00
-    .byte 6, $05, $45, $54, $50, $00
-    .byte 6, $00, $11, $11, $00, $00
-    .byte 6, $00, $05, $50, $00, $00
+spr_pexp2:   ; 8x6 turned
+    .byte 6, $00, $00, $10, $00, $00
+    .byte 6, $03, $31, $10, $00, $00
+    .byte 6, $00, $21, $10, $10, $00
+    .byte 6, $00, $15, $11, $11, $00
+    .byte 6, $22, $55, $51, $20, $00
+    .byte 6, $03, $01, $10, $00, $00
     .byte 0
-spr_pexp3:   ; 8x8 turned
-    .byte 6, $00, $18, $81, $00, $00
-    .byte 6, $51, $48, $84, $15, $00
-    .byte 6, $01, $18, $81, $10, $00
-    .byte 6, $04, $81, $18, $40, $00
-    .byte 6, $04, $81, $18, $40, $00
-    .byte 6, $01, $18, $81, $10, $00
-    .byte 6, $51, $48, $84, $15, $00
-    .byte 6, $00, $18, $81, $00, $00
+spr_pexp3:   ; 7x6 turned
+    .byte 5, $01, $51, $31, $00
+    .byte 5, $01, $51, $11, $10
+    .byte 5, $31, $50, $11, $00
+    .byte 5, $81, $58, $28, $50
+    .byte 5, $08, $12, $11, $00
+    .byte 5, $01, $32, $20, $00
     .byte 0
 spr_pexp4:   ; 8x8 turned
-    .byte 6, $15, $18, $04, $55, $00
-    .byte 6, $40, $50, $10, $01, $00
-    .byte 6, $01, $00, $08, $40, $00
-    .byte 6, $58, $41, $51, $81, $00
-    .byte 6, $58, $41, $51, $81, $00
-    .byte 6, $01, $00, $08, $40, $00
-    .byte 6, $40, $50, $10, $01, $00
-    .byte 6, $15, $18, $04, $55, $00
+    .byte 6, $00, $01, $20, $50, $00
+    .byte 6, $00, $13, $21, $11, $00
+    .byte 6, $11, $50, $03, $10, $00
+    .byte 6, $31, $00, $00, $13, $00
+    .byte 6, $11, $00, $00, $11, $00
+    .byte 6, $01, $10, $32, $30, $00
+    .byte 6, $02, $23, $31, $30, $00
+    .byte 6, $00, $01, $22, $10, $00
+    .byte 0
+spr_pexp5:   ; 8x8 turned
+    .byte 6, $00, $01, $b0, $00, $00
+    .byte 6, $0b, $10, $00, $1b, $00
+    .byte 6, $10, $00, $00, $13, $00
+    .byte 6, $01, $00, $00, $31, $00
+    .byte 6, $bb, $00, $00, $33, $00
+    .byte 6, $11, $00, $00, $33, $00
+    .byte 6, $00, $0b, $01, $00, $00
+    .byte 6, $01, $b1, $03, $30, $00
+    .byte 0
+spr_pexp6:   ; 8x8 turned
+    .byte 6, $01, $0b, $10, $00, $00
+    .byte 6, $bb, $10, $00, $10, $00
+    .byte 6, $b0, $00, $00, $00, $00
+    .byte 6, $00, $00, $00, $0b, $00
+    .byte 6, $00, $00, $00, $00, $00
+    .byte 6, $00, $00, $00, $00, $00
+    .byte 6, $01, $00, $00, $10, $00
+    .byte 6, $00, $10, $01, $00, $00
     .byte 0
 spr_beam_0_0:   ; 4x12 turned
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $b0, $00
+    .byte 4, $06, $0b, $00
+    .byte 4, $06, $0b, $00
+    .byte 4, $06, $0b, $00
+    .byte 4, $06, $0b, $00
+    .byte 4, $06, $0b, $00
+    .byte 4, $06, $0b, $00
+    .byte 4, $60, $b0, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $00, $00
     .byte 0
 spr_beam_0_1:   ; 4x12 turned
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
+    .byte 4, $b0, $00, $00
+    .byte 4, $b0, $00, $00
+    .byte 4, $b0, $60, $00
+    .byte 4, $0b, $06, $00
+    .byte 4, $0b, $06, $00
+    .byte 4, $0b, $06, $00
+    .byte 4, $0b, $06, $00
+    .byte 4, $0b, $06, $00
+    .byte 4, $0b, $06, $00
+    .byte 4, $b0, $60, $00
+    .byte 4, $b0, $00, $00
+    .byte 4, $b0, $00, $00
     .byte 0
 spr_beam_0_2:   ; 4x12 turned
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $60, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $60, $60, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $00, $00
     .byte 0
 spr_beam_0_3:   ; 4x12 turned
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $60, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $06, $06, $00
+    .byte 4, $60, $60, $00
+    .byte 4, $60, $00, $00
+    .byte 4, $60, $00, $00
     .byte 0
-spr_beam_1_0:   ; 4x12 turned
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
+spr_beam_1_0:   ; 3x12 turned
+    .byte 3, $40, $00
+    .byte 3, $40, $00
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $00
+    .byte 3, $40, $00
     .byte 0
-spr_beam_1_1:   ; 4x12 turned
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
+spr_beam_1_1:   ; 3x12 turned
+    .byte 3, $40, $00
+    .byte 3, $40, $00
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $40
+    .byte 3, $40, $00
+    .byte 3, $40, $00
     .byte 0
-spr_beam_1_2:   ; 4x12 turned
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
+spr_beam_1_2:   ; 3x12 turned
+    .byte 3, $40, $00
+    .byte 3, $40, $00
+    .byte 3, $40, $b0
+    .byte 3, $40, $b0
+    .byte 3, $40, $b0
+    .byte 3, $40, $b0
+    .byte 3, $40, $b0
+    .byte 3, $40, $b0
+    .byte 3, $40, $b0
+    .byte 3, $40, $b0
+    .byte 3, $40, $00
+    .byte 3, $40, $00
     .byte 0
-spr_beam_1_3:   ; 4x12 turned
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
+spr_beam_1_3:   ; 3x12 turned
+    .byte 3, $b0, $00
+    .byte 3, $b0, $00
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $00
+    .byte 3, $b0, $00
     .byte 0
-spr_beam_2_0:   ; 4x20 turned
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
+spr_beam_2_0:   ; 3x20 turned
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $00
+    .byte 3, $30, $00
     .byte 0
-spr_beam_2_1:   ; 4x20 turned
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
+spr_beam_2_1:   ; 3x20 turned
+    .byte 3, $b0, $00
+    .byte 3, $b0, $00
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $40
+    .byte 3, $b0, $00
+    .byte 3, $b0, $00
     .byte 0
-spr_beam_2_2:   ; 4x20 turned
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
+spr_beam_2_2:   ; 3x20 turned
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $00
+    .byte 3, $30, $00
     .byte 0
-spr_beam_2_3:   ; 4x20 turned
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
+spr_beam_2_3:   ; 3x20 turned
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $40
+    .byte 3, $30, $00
+    .byte 3, $30, $00
     .byte 0
-spr_beam_3_0:   ; 4x28 turned
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
+spr_beam_3_0:   ; 3x28 turned
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $00
     .byte 0
-spr_beam_3_1:   ; 4x28 turned
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
+spr_beam_3_1:   ; 3x28 turned
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $30
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $00
     .byte 0
-spr_beam_3_2:   ; 4x28 turned
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
+spr_beam_3_2:   ; 3x28 turned
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $b0
+    .byte 3, $30, $00
+    .byte 3, $30, $00
+    .byte 3, $30, $00
     .byte 0
-spr_beam_3_3:   ; 4x28 turned
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $04, $04, $00
-    .byte 4, $40, $40, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $0b, $0b, $00
-    .byte 4, $b0, $b0, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
-    .byte 4, $03, $03, $00
-    .byte 4, $30, $30, $00
+spr_beam_3_3:   ; 3x28 turned
+    .byte 3, $b0, $00
+    .byte 3, $b0, $00
+    .byte 3, $b0, $00
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $30
+    .byte 3, $b0, $00
+    .byte 3, $b0, $00
+    .byte 3, $b0, $00
     .byte 0
-sprite_lo: .byte <spr_player, <spr_player_red, <spr_pbul, <spr_ebul, <spr_bee_a, <spr_bee_b, <spr_bfly_a, <spr_bfly_b, <spr_boss_a, <spr_boss_b, <spr_bossp_a, <spr_bossp_b, <spr_expl1, <spr_expl2, <spr_expl3, <spr_pexp1, <spr_pexp2, <spr_pexp3, <spr_pexp4, <spr_beam_0_0, <spr_beam_0_1, <spr_beam_0_2, <spr_beam_0_3, <spr_beam_1_0, <spr_beam_1_1, <spr_beam_1_2, <spr_beam_1_3, <spr_beam_2_0, <spr_beam_2_1, <spr_beam_2_2, <spr_beam_2_3, <spr_beam_3_0, <spr_beam_3_1, <spr_beam_3_2, <spr_beam_3_3
-sprite_hi: .byte >spr_player, >spr_player_red, >spr_pbul, >spr_ebul, >spr_bee_a, >spr_bee_b, >spr_bfly_a, >spr_bfly_b, >spr_boss_a, >spr_boss_b, >spr_bossp_a, >spr_bossp_b, >spr_expl1, >spr_expl2, >spr_expl3, >spr_pexp1, >spr_pexp2, >spr_pexp3, >spr_pexp4, >spr_beam_0_0, >spr_beam_0_1, >spr_beam_0_2, >spr_beam_0_3, >spr_beam_1_0, >spr_beam_1_1, >spr_beam_1_2, >spr_beam_1_3, >spr_beam_2_0, >spr_beam_2_1, >spr_beam_2_2, >spr_beam_2_3, >spr_beam_3_0, >spr_beam_3_1, >spr_beam_3_2, >spr_beam_3_3
-sprite_dx: .byte 0, 0, 2, 4, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-sprite_dy: .byte 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+sprite_lo: .byte <spr_player, <spr_player_red, <spr_pbul, <spr_ebul, <spr_bee_a, <spr_bee_b, <spr_bfly_a, <spr_bfly_b, <spr_boss_a, <spr_boss_b, <spr_bossp_a, <spr_bossp_b, <spr_expl1, <spr_expl2, <spr_expl3, <spr_expl4, <spr_expl5, <spr_pexp1, <spr_pexp2, <spr_pexp3, <spr_pexp4, <spr_pexp5, <spr_pexp6, <spr_beam_0_0, <spr_beam_0_1, <spr_beam_0_2, <spr_beam_0_3, <spr_beam_1_0, <spr_beam_1_1, <spr_beam_1_2, <spr_beam_1_3, <spr_beam_2_0, <spr_beam_2_1, <spr_beam_2_2, <spr_beam_2_3, <spr_beam_3_0, <spr_beam_3_1, <spr_beam_3_2, <spr_beam_3_3
+sprite_hi: .byte >spr_player, >spr_player_red, >spr_pbul, >spr_ebul, >spr_bee_a, >spr_bee_b, >spr_bfly_a, >spr_bfly_b, >spr_boss_a, >spr_boss_b, >spr_bossp_a, >spr_bossp_b, >spr_expl1, >spr_expl2, >spr_expl3, >spr_expl4, >spr_expl5, >spr_pexp1, >spr_pexp2, >spr_pexp3, >spr_pexp4, >spr_pexp5, >spr_pexp6, >spr_beam_0_0, >spr_beam_0_1, >spr_beam_0_2, >spr_beam_0_3, >spr_beam_1_0, >spr_beam_1_1, >spr_beam_1_2, >spr_beam_1_3, >spr_beam_2_0, >spr_beam_2_1, >spr_beam_2_2, >spr_beam_2_3, >spr_beam_3_0, >spr_beam_3_1, >spr_beam_3_2, >spr_beam_3_3
+sprite_dx: .byte 0, 0, 2, 4, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+sprite_dy: .byte 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0, 0, 3, 1, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0

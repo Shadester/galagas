@@ -1787,16 +1787,19 @@ arc_sync_aliens:
         lda enemy_state,x               ; an exploding alien shows its explosion frames
         cmp #4
         bne @next
-        lda enemy_timer,x
-        lsr
-        lsr
-        sta temp
-        lda #SPR_EXPL1+2
+        lda #20                         ; G_EXPL_TICKS: step (20 - timer) / 4, 0 .. 4
         sec
-        sbc temp
-        bcs @ef
-        lda #SPR_EXPL1
-@ef:    sta spr_f,x
+        sbc enemy_timer,x
+        bcs @ep
+        lda #0
+@ep:    lsr
+        lsr
+        cmp #5
+        bcc @ef
+        lda #4
+@ef:    clc
+        adc #SPR_EXPL1
+        sta spr_f,x
         bra @next
 @hide:  lda #$ff
         sta spr_y,x
