@@ -67,6 +67,7 @@ The alien art stays the art of the C64 game (`c64/src/art.asm`).
 | 24 | Respawn | Timer `game_tmrs[2]` + 30 ticks (max 120) after a death, enemies wait until the ship is back (`dives:689`); the stage waits with the READY text | 107 ticks dead, then READY until nothing flies (80 ticks), sorties restart slowly (`tmr2 + 30`, max 120), entry waves that have not started wait | **Same** |
 | 25 | Speed of the machine | 60 Hz | 50 Hz (`ticks`); all our speeds are in pixels per tick | **Decision needed** (open point 1) |
 | 26 | Screen | 224 x 288, portrait | C64 play area 320 x 200 landscape (`x 24..343, y 50..249`) | Limit: we scale the layout |
+| 27 | Explosions and the beam | An enemy bursts into scattered pixels in 5 steps of about 4 ticks (star, lump, scatter, ring, thin ring); the beam is a cone of about 40 thin rings that widens downward, the rings shimmer (measured on arcade footage; our own art) | `G_EXPL_TICKS` 20 ticks in 5 steps of 4 (it was the C64's 11 in 3 steps); the fighter bursts in 6 steps of 8 ticks, then waits (107 dead ticks in all); the beam is a cone of thin rings (4 rows of 2 to 4 rings, the first ones bowed), teal near the boss, cyan, blue, with a light ring that runs down | Same look (the C64 draws the rings with custom characters: a RAM character set at `$2800`, `c64/src/charset.asm`) |
 
 ## Platform limits (first look; measure before you decide)
 

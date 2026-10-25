@@ -1,4 +1,4 @@
-"""The explosions: an alien (3 frames: a flash, a fireball, sparks) and the fighter (4 frames: a white flash, a fireball with debris, a ring with debris, debris). Fixed colours only
+"""The explosions, after the arcade burst (scattered single pixels, no solid blob): an alien (5 frames: a star, a lump, a scatter, a ring, a thin ring) and the fighter (6 frames: a flash, a fireball with pieces, the pieces fly apart and thin out). Fixed colours only
 (white, yellow, orange, red, cyan, blue): the same in every palette. Design space 32 x 32, drawn at 32 and at 24 pixels. Run: python3 art/master/explode.py"""
 import math
 import os
@@ -40,49 +40,83 @@ def ball(c, cx, cy, layers, jitter=1.0, seed=1, spokes=0, spoke_len=0, spoke_ch=
                 c.g[py][px] = ch
 
 
-def sparks(c, cx, cy, n, r0, r1, letters, seed):
+def scatter(c, cx, cy, n, r0, r1, letters, seed, dash=.4, gap=2.4):
+    """n single pixels (design units from the centre: r0 .. r1) in the letters, no two closer than `gap` (confetti, like the arcade burst); some are a 2 pixel dash that points away from the centre."""
     rnd = random.Random(seed)
-    for _ in range(n):
+    pts = []
+    for _ in range(n * 40):
+        if len(pts) == n:
+            break
         a = rnd.uniform(0, 2 * math.pi)
         r = rnd.uniform(r0, r1)
         x, y = cx + math.cos(a) * r, cy + math.sin(a) * r
-        ch = rnd.choice(letters)
-        c.put(x, y, ch)
-        if rnd.random() < .5:
-            c.put(x + 1.4, y, ch)
+        if all(math.hypot(x - px, y - py) >= gap for px, py in pts):
+            pts.append((x, y))
+            ch = rnd.choice(letters)
+            c.put(x, y, ch)
+            if rnd.random() < dash:
+                c.put(x + math.cos(a) * c.k, y + math.sin(a) * c.k, ch)
+
+
+def clump(c, cx, cy, r, letters, seed, fill=.8):
+    """A dense lump of single pixels (the core of a burst)."""
+    rnd = random.Random(seed)
+    for py in range(c.h):
+        for px in range(c.n):
+            x, y = (px + .5) * c.k, (py + .5) * c.k
+            if math.hypot(x - cx, y - cy) <= r and rnd.random() < fill:
+                c.g[py][px] = rnd.choice(letters)
+
+
+def star(c, cx, cy, arm, tip):
+    """The first frame of the arcade burst: a small cross with the tips in another letter (pixels, not design units)."""
+    c.put(cx, cy, 'w')
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        c.put(cx + dx * c.k, cy + dy * c.k, 'w')
+        c.put(cx + dx * 2 * c.k, cy + dy * 2 * c.k, tip)
+    for dx, dy in ((1, 1), (-1, -1), (1, -1), (-1, 1)):
+        c.put(cx + dx * c.k, cy + dy * c.k, arm)
 
 
 def alien(frame, w, h):
+    """The arcade enemy burst in 5 steps: a small star, a yellow lump with white dots, a wider scatter, a ring of dots, a thin ring."""
     c = paint.Canvas(w, h)
     if frame == 'a':
-        ball(c, 16, 16, [(2.6, 'w'), (4.4, 'y'), (6.0, 'O'), (7.0, 'P')], jitter=.9, seed=3)
+        star(c, 16, 16, 'e', 'e')
     elif frame == 'b':
-        ball(c, 16, 16, [(4.2, 'w'), (7.2, 'y'), (10.0, 'O'), (12.0, 'e'), (13.2, 'P')], jitter=1.6, seed=5, spokes=8, spoke_len=15.5)
+        clump(c, 16, 16, 4.6, 'yyyOOew', 3)
+        scatter(c, 16, 16, 12, 5.5, 9.5, 'wwCwy', 5, gap=2.2)
+    elif frame == 'c':
+        clump(c, 16, 16, 2.6, 'yyO', 7, fill=.6)
+        scatter(c, 16, 16, 30, 4.5, 11.5, 'wwwyyCw', 9)
+    elif frame == 'd':
+        scatter(c, 16, 16, 44, 8.5, 14.8, 'wwwwwyew', 13, gap=2.3)
     else:
-        ball(c, 16, 16, [(3, 'P')], jitter=1.0, seed=7)
-        sparks(c, 16, 16, 18, 6, 15, 'yyOOeP', 11)
-        c.region(lambda x, y: 13 <= math.hypot(x - 16, y - 16) <= 14.2 and math.sin(math.atan2(y - 16, x - 16) * 5) > .5, 'P')
+        scatter(c, 16, 16, 22, 11, 15.6, 'wwwws', 17, gap=2.6)
     return c
 
 
 def player(frame, w, h):
+    """The fighter in 6 steps: a white flash, a fireball with pieces, then the pieces (white, blue, red) fly apart and thin out."""
     c = paint.Canvas(w, h)
     if frame == 'a':
-        ball(c, 16, 16, [(4, 'w'), (6.5, 'C'), (7.6, 'D')], jitter=.8, seed=2)
+        ball(c, 16, 16, [(2.8, 'w'), (4.6, 'C'), (5.4, 'D')], jitter=.8, seed=2)
     elif frame == 'b':
-        ball(c, 16, 16, [(4.5, 'w'), (7.5, 'y'), (10.5, 'O'), (12.4, 'e'), (13.4, 'P')], jitter=1.7, seed=4, spokes=10, spoke_len=15.5, spoke_ch='w')
-        sparks(c, 16, 16, 10, 8, 15, 'wbwb', 21)
+        clump(c, 16, 16, 6.2, 'wyyOOe', 4, fill=.85)
+        scatter(c, 16, 16, 14, 6.5, 11.5, 'wwbbe', 21, dash=.6)
     elif frame == 'c':
-        ball(c, 16, 16, [(3.2, 'y'), (5.2, 'O'), (6.4, 'P')], jitter=1.2, seed=6)
-        c.region(lambda x, y: 11.5 <= math.hypot(x - 16, y - 16) <= 13.6, 'O', only='.')
-        c.region(lambda x, y: 12.8 <= math.hypot(x - 16, y - 16) <= 13.6, 'P', only='O')
-        sparks(c, 16, 16, 16, 8, 15.5, 'wwbyc', 33)
+        clump(c, 16, 16, 3.0, 'yyO', 6, fill=.6)
+        scatter(c, 16, 16, 34, 4.5, 12.5, 'wwwbbeyO', 33, dash=.55)
+    elif frame == 'd':
+        scatter(c, 16, 16, 38, 8, 14.5, 'wwbbebwy', 44, dash=.5, gap=2.3)
+    elif frame == 'e':
+        scatter(c, 16, 16, 24, 11, 15.6, 'wwbs', 55, gap=2.5)
     else:
-        sparks(c, 16, 16, 24, 5, 15.5, 'wwbycOe', 44)
-        ball(c, 16, 16, [(1.6, 'P')], jitter=.3, seed=9)
+        scatter(c, 16, 16, 12, 12.5, 15.7, 'wws', 66, gap=3.0)
     return c
 
 
 if __name__ == '__main__':
-    print(paint.write('xa', 'blue', None, alien, frames=('a', 'b', 'c')))
-    print(paint.write('xp', 'blue', None, player, frames=('a', 'b', 'c', 'd')))
+    SIZES = ((32, 32, ''), (24, 24, '.24'), (16, 16, '.16'), (12, 12, '.12'))        # the PSP, the Amiga, the terminal and the Lynx portrait, the small ports
+    print(paint.write('xa', 'blue', None, alien, frames=('a', 'b', 'c', 'd', 'e'), sizes=SIZES))
+    print(paint.write('xp', 'blue', None, player, frames=('a', 'b', 'c', 'd', 'e', 'f'), sizes=SIZES))
