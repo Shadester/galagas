@@ -68,7 +68,7 @@ draw_sprites:
 .endif
 
 ; The tractor beam: beam_len rows of checkerboard cells under boss cap_boss while it is on (cap_state 2 or 3).
-; The C64 writes characters; here it is drawn every frame.
+; The C64 writes characters (one cell of 8 pixels is the finest place for the beam there); here it is drawn every frame at the pixel.
 .ifdef PORTRAIT
 ; Portrait: row r of cells (4 x 4 pixels) is turned: 4 wide in the screen x (118 - y / 2 - 4 r), (2 hw + 1) * 4 high in the screen y (x / 2 + 2 - 4 hw).
 draw_beam:
@@ -140,16 +140,11 @@ draw_beam:
 @on:    lda beam_len
         beq @rts
         ldx cap_boss
-        lda enemy_x,x               ; Column of the boss centre: (x - 18) / 8
-        sec
-        sbc #18
-        sta bd_col
-        lda enemy_x_msb,x
-        sbc #0
+        lda enemy_x_msb,x           ; The beam is centred under the boss: its centre is the screen pixel x / 2 - 6 (the picture of the boss is 12 wide)
         lsr
-        ror bd_col
-        lsr bd_col
-        lsr bd_col
+        lda enemy_x,x
+        ror
+        sta bd_col                  ; x / 2
         lda enemy_y,x               ; First row: just under the boss
         sec
         sbc #36
@@ -166,17 +161,19 @@ draw_beam:
 @row:   ldx bd_r
         cpx beam_len
         bcs @rts
-        lda bd_col                  ; x = (column - half width) * 4
+        lda hw_tbl,x                ; the row is (2 hw + 1) * 4 wide: left edge = x / 2 - 6 - (2 hw + 1) * 2 = x / 2 - 8 - 4 hw
+        asl
+        asl
+        clc
+        adc #8
+        sta dr_x
+        lda bd_col
         sec
-        sbc hw_tbl,x
+        sbc dr_x
         sta dr_x
         lda #0
         sbc #0
         sta dr_x+1
-        asl dr_x
-        rol dr_x+1
-        asl dr_x
-        rol dr_x+1
         lda bd_row0                 ; y = (first row + row) * 4
         clc
         adc bd_r
