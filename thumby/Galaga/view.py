@@ -85,8 +85,8 @@ class Scene:
                 sid[i] = -1
                 continue
             if st == G.A_EXPLODE:
-                f = 2 - (a.timer >> 2)
-                sid[i] = S.EXPL1 + (0 if f < 0 else 2 if f > 2 else f)
+                f = (G.EXPL_TICKS - a.timer) >> 2
+                sid[i] = S.EXPL1 + (0 if f < 0 else 4 if f > 4 else f)
             elif a.type == G.T_BOSS and a.hp == 1 and not g.challenge:
                 sid[i] = S.BOSSP_A + anim
             else:
@@ -104,10 +104,13 @@ class Scene:
             if g.dyingQuiet:
                 sid[SLOT_SHIP] = -1
             else:
-                f = 3 - (g.stateTimer >> 4)
-                sid[SLOT_SHIP] = S.PEXP1 + (0 if f < 0 else 3 if f > 3 else f)
-                sx[SLOT_SHIP] = px
-                sy[SLOT_SHIP] = py
+                f = (G.DIE_TICKS - g.stateTimer) >> 3
+                if f < 6:                        # 6 steps of 8 ticks, then nothing until the ship is back
+                    sid[SLOT_SHIP] = S.PEXP1 + f
+                    sx[SLOT_SHIP] = px
+                    sy[SLOT_SHIP] = py
+                else:
+                    sid[SLOT_SHIP] = -1
         elif blink:
             sid[SLOT_SHIP] = -1
         else:

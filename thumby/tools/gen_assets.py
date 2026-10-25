@@ -2,7 +2,7 @@
 """Generate the textures of the Thumby Color game (8-bit indexed BMPs: the engine loads 1/4/8/16-bit BMPs):
 
   Galaga/sprites.bmp   12 x 12 cells, 8 per row: aliens, ship, bullets, explosions (sprite ids: Galaga/sprite_ids.py)
-  Galaga/beams.bmp     tractor beam strips: 4 colour phases across, 4 rows down, 36 x 4 pixel cells
+  Galaga/beams.bmp     tractor beam strips: 4 colour phases across, 4 rows down, 36 x 4 pixel cells (2 rings each)
   Galaga/title.bmp     the title picture (from assets/title-source.png, the C64 title picture)
   Galaga/icon.bmp      the launcher icon (38 pixels high)
   Galaga/font.bmp      the 5 x 7 font (the engine's built-in font has digits that are not on the baseline)
@@ -21,9 +21,9 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 C64_ART = os.path.join(ROOT, '..', 'c64', 'src', 'art.asm')
 OUT = os.path.join(ROOT, 'Galaga')
 CELL = 12
-PAL = {'.': 0, 'w': 1, 'r': 2, 'b': 3, 'c': 4, 'y': 5, 'g': 6, 'p': 7, 'o': 8, 'l': 9, 'f': 10}
+PAL = {'.': 0, 'w': 1, 'r': 2, 'b': 3, 'c': 4, 'y': 5, 'g': 6, 'p': 7, 'o': 8, 'l': 9, 'f': 10, 'd': 11}
 COLOURS = [(0, 0, 0), (255, 255, 255), (238, 34, 0), (68, 102, 255), (0, 204, 221), (255, 255, 0), (0, 204, 68),
-           (204, 68, 221), (255, 136, 0), (153, 187, 255), (255, 170, 204)]
+           (204, 68, 221), (255, 136, 0), (153, 187, 255), (255, 170, 204), (0, 150, 170)]      # d: the teal of the beam near the boss
 
 
 def c64_sprites():
@@ -84,10 +84,26 @@ for name, own in (('bee', 'b'), ('bfly', 'r'), ('boss', 'g'), ('bossp', 'p')):
     for f in 'ab':
         SPRITES.append((f'{name}_{f}', squeeze(recolour(c[f'{base}_{f}'], own), 9 if name == 'bee' else None)))
 SPRITES += [('ship', SHIP), ('captive', CAPTIVE), ('pbul', PBUL), ('ebul', EBUL)]
-for n in (1, 2, 3):
-    SPRITES.append((f'expl{n}', squeeze(recolour(c[f'expl{n}'], 'o'))))
-for n in (1, 2, 3, 4):
-    SPRITES.append((f'pexp{n}', squeeze(halve(recolour(c[f'pexp{n}'], 'o')))))
+MASTER = os.path.join(ROOT, '..', 'art', 'master')
+MASTER_LETTERS = {'w': 'w', 'y': 'y', 'Y': 'y', 'O': 'o', 'P': 'o', 'e': 'r', 'K': '.', 'C': 'c', 'D': 'c', 'b': 'b', 'c': 'l', 's': 'l', 'S': 'l'}
+
+
+def master_frames(name):
+    """The frames of art/master/NAME.12.txt (12 x 12, made by art/master/explode.py) in the letters of this palette."""
+    frames, cur = [], None
+    for line in open(os.path.join(MASTER, name + '.12.txt')).read().split('\n'):
+        if line.startswith('frame '):
+            cur = []
+            frames.append(cur)
+        elif cur is not None and line:
+            cur.append(''.join(MASTER_LETTERS.get(ch, '.') for ch in line))
+    return frames
+
+
+for n, rows in enumerate(master_frames('xa'), 1):                          # the 5 steps of an alien's burst
+    SPRITES.append((f'expl{n}', rows))
+for n, rows in enumerate(master_frames('xp'), 1):                          # the 6 steps of the fighter's
+    SPRITES.append((f'pexp{n}', rows))
 SPRITES.append(('life', LIFE))
 NAMES = [n for n, _ in SPRITES]
 
@@ -113,19 +129,21 @@ def sheet():
 
 
 def beams():
-    """4 colour phases across, 4 rows down: row r is 2 * (r + 2) + 1 cells of 3 x 4 pixels, centred in 36 pixels."""
+    """4 colour phases across, 4 rows down: row r is 4 pixels high with 2 rings (one at y 0, one at y 2) in a cone that is 12 pixels wide at the top and 32 at the bottom, centred in 36 pixels:
+    ring k = 2r + j has the half width 6 + 1.45k; teal near the boss, cyan, blue; every 4th ring is light, and which ones moves down with the phase (the arcade's beam is a cone of thin rings)."""
     im = Image.new('P', (4 * 36, 4 * 4), 0)
     im.putpalette(palette_bytes(COLOURS))
     for phase in range(4):
         for r in range(4):
-            cells = 2 * (r + 2) + 1
-            x0 = phase * 36 + (36 - cells * 3) // 2
-            for k in range(cells):
-                pen = PAL['blcl'[(k + r + phase) & 3]]
-                for y in range(4):
-                    for x in range(3):
-                        if (x + y + k) % 2 == 0:
-                            im.putpixel((x0 + k * 3 + x, r * 4 + y), pen)
+            for j in range(2):
+                k = 2 * r + j
+                hw = 6 + 1.45 * k
+                pen = PAL['l' if (k - phase) % 4 == 0 else 'd' if k < 2 else 'c' if k < 5 else 'b']
+                for x in range(36):
+                    u = (x + .5 - 18) / hw
+                    if abs(u) <= 1:
+                        y = 2 * j + (1 if k < 2 and abs(u) > .6 else 0)       # the first rings bow down at the ends
+                        im.putpixel((phase * 36 + x, r * 4 + y), pen)
     return im
 
 

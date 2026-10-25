@@ -14,6 +14,8 @@ S_TITLE, S_INTRO, S_PLAY, S_DYING, S_GAMEOVER, S_CAPTURED, S_RESULT, S_READY = r
 T_BOSS, T_BUTTERFLY, T_BEE = range(3)
 A_DEAD, A_FORM, A_DIVE, A_RETURN, A_EXPLODE, A_BEAM, A_ENTER = range(7)
 C_NONE, C_DIVING, C_BEAM, C_PULL, C_CARRY, C_RESCUE = range(6)   # tractor beam / captive state
+EXPL_TICKS = 20          # an alien bursts for 20 ticks in 5 steps of 4 (psp/game.h G_EXPL_TICKS); the fighter's burst is 6 steps of 8 ticks at the start of its 107 dead ticks
+DIE_TICKS = 107
 
 # Sound events, one bit each; the platform clears Game.snd after reading.
 SND_SHOOT, SND_EXPLODE, SND_HIT, SND_DEATH, SND_SWOOP = 1, 2, 4, 8, 16
@@ -201,7 +203,7 @@ class Game:
             return
         self.lives -= 1
         self.state = S_DYING
-        self.stateTimer = 107     # the arcade waits 4 x 32 frames before the ship comes back
+        self.stateTimer = DIE_TICKS     # the arcade waits 4 x 32 frames before the ship comes back
         self.dyingQuiet = 0
         for b in self.eb:
             b.clear()
@@ -279,7 +281,7 @@ class Game:
             else:
                 self.cap = C_NONE   # captive lost, or capture cancelled (beam vanishes)
         a.st = A_EXPLODE
-        a.timer = 11
+        a.timer = EXPL_TICKS
         self.snd |= SND_EXPLODE
         self.add_score(pts)
 
@@ -683,7 +685,7 @@ class Game:
                         if a.type == T_BOSS and self.cap == C_CARRY and self.capBoss == j:
                             self.cap = C_NONE
                         a.st = A_EXPLODE
-                        a.timer = 11
+                        a.timer = EXPL_TICKS
                         self.snd |= SND_EXPLODE
                         self.player_hit(s)
                         break
