@@ -44,7 +44,7 @@ static const u16 *title_ptr = title_words;
 
 typedef struct { s16 xw, wd, y, h; } Rect;       /* words from the left of the bitmap, width in words, lines */
 typedef struct {
-    Rect rect[MAX_RECTS];                         /* what the CPU drew (text, beam): cleared at the start of the next use of this bitmap */
+    Rect rect[MAX_RECTS];                         /* what was drawn outside the sprite slots (text, beam): cleared at the start of the next use of this bitmap */
     int nrect;
 } Dirty;
 
@@ -589,13 +589,13 @@ static void draw_sprites(void) {
     sprites_clear(dl, n);
     PT(1, pt);
     wait_blit();
-    if (beam_req.rows) beam_now();                /* the beam is behind the sprites: drawn first (CPU) */
+    if (beam_req.rows) beam_now();                /* the beam is behind the sprites: drawn first */
     sprites_blit(sl, todo);
     PT(3, pt);
 }
 
 /* ---- text and the beam: text is drawn after the sprites (the blitter: every character is a sprite, see glyph_list in tools/gen_assets.py),
- * the beam before them (the CPU) ---- */
+ * the beam before them (also the blitter: one sprite for each row, see beam_now) ---- */
 
 /* the words that a text covers */
 static void text_rect(int x, int n, int y, Rect *r) {
@@ -628,9 +628,7 @@ void video_text(const char *s, int x, int y, int colour) {
     text_rect(x, n, y, &new_ov[nnew_ov++]);
 }
 
-static const u8 beam_colours[4] = {28, 30, 1, 30};           /* cyan, light blue, white, light blue */
-
-/* the beam: rows of 8 pixel cells that get wider, with a checkerboard in the colours of beam_colours */
+/* the beam: rows of 8 pixel cells that get wider, with a checkerboard in the pens BEAM_PENS (tools/gen_assets.py: one sprite for each row and phase) */
 static void beam_rect(int r, Rect *out) {
     int cells = 2 * r + 5, xb = beam_req.x - cells * 4 + GUARD;
     out->xw = xb >> 4; out->wd = ((xb + cells * 8 - 1) >> 4) - (xb >> 4) + 1; out->y = beam_req.y + r * 8; out->h = 8;
@@ -643,18 +641,15 @@ void video_beam(int x, int y, int rows, int phase) {
 }
 
 static void beam_now(void) {
-    int r, k, line, pl;
+    int r;
     for (r = 0; r < beam_req.rows; ++r) {
         int cells = 2 * r + 5, xb = beam_req.x - cells * 4 + GUARD, yy = beam_req.y + r * 8;
+        Obj o = {SPR_BEAM + 4 * r + (beam_req.phase & 3), (xb & ~7) - GUARD, yy};      /* (a cell starts at a multiple of 8 pixels) */
+        Place p;
         Rect rc;
         if (yy < TOP || yy + 8 > SCREEN_H) continue;
-        for (k = 0; k < cells; ++k) {
-            int col = beam_colours[(k + r + beam_req.phase) & 3];
-            u8 *p = (u8 *)bmp[back] + yy * ROWB + ((xb + k * 8) >> 3);
-            for (line = 0; line < 8; ++line, p += ROWB)
-                for (pl = 0; pl < NPL; ++pl)
-                    if (col >> pl & 1) p[pl * STRIDE] |= (line + k) & 1 ? 0x55 : 0xaa;      /* a checkerboard */
-        }
+        place_fill(&o, &p, TOP);
+        if (p.has) blit_place(&p);
         beam_rect(r, &rc);
         add_dirty(rc.xw, rc.wd, rc.y, rc.h);
     }

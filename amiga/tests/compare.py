@@ -25,6 +25,8 @@ for t in (150, 400, 800):
     CASES[f'chal{t}'] = (AUTO + ' -DSTART_STAGE=3', t)
 for t in (300, 900, 1700):
     CASES[f'late{t}'] = (AUTO + ' -DSTART_STAGE=11', t)
+for t in (5450, 5500, 5560, 5650):                              # the tractor beam (the first one of the autoplay game is at tick 5389 and lasts about 300 ticks)
+    CASES[f'beam{t}'] = (AUTO, t)
 QUICK = ['play130', 'play400', 'play950', 'chal400', 'late900']
 
 args = sys.argv[1:]

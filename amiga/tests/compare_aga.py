@@ -15,7 +15,7 @@ sys.path.insert(0, HERE)
 import fsuae  # noqa: E402
 
 AUTO = '-DAUTOPLAY -DTITLE_HOLD=0'
-CASES = {'play130': (AUTO, 130), 'play400': (AUTO, 400), 'play950': (AUTO, 950), 'play1800': (AUTO, 1800), 'chal400': (AUTO + ' -DSTART_STAGE=3', 400), 'late900': (AUTO + ' -DSTART_STAGE=11', 900)}
+CASES = {'play130': (AUTO, 130), 'play400': (AUTO, 400), 'play950': (AUTO, 950), 'play1800': (AUTO, 1800), 'chal400': (AUTO + ' -DSTART_STAGE=3', 400), 'late900': (AUTO + ' -DSTART_STAGE=11', 900), 'beam5500': (AUTO, 5500)}
 names = [a for a in sys.argv[1:] if a in CASES] or list(CASES)
 out_dir = os.path.join(ROOT, 'build', 'cmp_aga')
 os.makedirs(out_dir, exist_ok=True)
