@@ -51,6 +51,7 @@ cur_brx:        .res 10                 ; breathing: the shift of every column a
 cur_bry:        .res 5
 d16:            .res 2
 t8:             .byte 0
+shot_sy:        .byte 0                 ; check_collisions: the shot's y - HB_SHOT_Y
 racc:           .byte 0
 rcnt:           .byte 0
 
@@ -143,10 +144,18 @@ move_y:
 
 ; ---------------------------------------------------------------------------------------------
 ; The flight paths: a bit stream (see tools/gen_arcade.py). rbit: carry = the next bit. Keeps X.
+; A macro: a call and a return cost more than the few instructions of the usual case.
 ; ---------------------------------------------------------------------------------------------
-rbit:
+.macro rbit
+        .local @have
         lda scnt
         bne @have
+        jsr rbit_fill
+@have:  dec scnt
+        lsr scur
+.endmacro
+
+rbit_fill:                              ; the next byte of the stream: scur, 8 bits left
         ldy #0
         lda (sp),y
         sta scur
@@ -155,39 +164,37 @@ rbit:
         inc sp+1
 @s:     lda #8
         sta scnt
-@have:  dec scnt
-        lsr scur
         rts
 
 ; A = the next change of a step: 0, +1, -1, +2, -2 or (the low byte of) a longer one
 rv:
-        jsr rbit
+        rbit
         bcs @1
         lda #0
         rts
-@1:     jsr rbit
+@1:     rbit
         bcs @2
         lda #1
         rts
-@2:     jsr rbit
+@2:     rbit
         bcs @3
         lda #$ff
         rts
-@3:     jsr rbit
+@3:     rbit
         bcs @4
         lda #2
         rts
-@4:     jsr rbit
+@4:     rbit
         bcs @5
         lda #$fe
         rts
 @5:     lda #8
         sta rcnt
-@e:     jsr rbit
+@e:     rbit
         ror racc
         dec rcnt
         bne @e
-        jsr rbit                        ; the 9th bit is not needed: only the low byte of the change counts
+        rbit                        ; the 9th bit is not needed: only the low byte of the change counts
         lda racc
         rts
 
@@ -1681,8 +1688,19 @@ check_collisions:
         ldy #0
 @shot:  lda pbul_active,y
         beq @next_shot
+        lda pbul_y,y
+        sec
+        sbc #HB_SHOT_Y
+        sta shot_sy
         ldx #0
-@al:    lda enemy_state,x
+@al:    lda ay_lo,x                     ; the shot's y - 8 <= the alien's y < the shot's y + 8: most aliens fail here, so it comes first
+        sec
+        sbc shot_sy
+        cmp #2*HB_SHOT_Y
+        bcs @skip
+        lda ay_hi,x
+        bne @skip
+        lda enemy_state,x
         beq @skip
         cmp #4
         beq @skip
@@ -1690,16 +1708,7 @@ check_collisions:
         bne @chk
         lda enemy_flag,x
         beq @skip                       ; still waiting to fly in
-@chk:   lda ay_hi,x                     ; the shot's y - 8 <= the alien's y < the shot's y + 8
-        bne @skip
-        lda ay_lo,x
-        sec
-        sbc pbul_y,y
-        clc
-        adc #HB_SHOT_Y
-        cmp #2*HB_SHOT_Y
-        bcs @skip
-        lda pbul_x,y                    ; the alien's x - 6 <= the shot's x < the alien's x + 12
+@chk:   lda pbul_x,y                    ; the alien's x - 6 <= the shot's x < the alien's x + 12
         sec
         sbc ax_lo,x
         sta d16
