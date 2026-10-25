@@ -268,11 +268,6 @@ jin_bonus:
 num_sprites:        !byte 0
 spr_update_flag:    !byte 0
 sorted_sprites:     !byte 0
-spr_irq_counter:    !byte 0
-sort_temp_x:        !byte 0
-sort_prev:          !byte 0
-sort_ky:            !byte 0
-sort_key:           !byte 0
 
 ; Virtual sprite tables (unsorted)
 spr_x:              !fill MAX_SPRITES+1, 0
@@ -294,8 +289,6 @@ sort_order:         !fill MAX_SPRITES, 0
 sort_vi:            !fill MAX_SPRITES+1, 0  ; Virtual sprite
 sort_spr_y:         !fill MAX_SPRITES+1, 0  ; Its Y (the previous user of a hardware sprite)
 sort_line:          !fill MAX_SPRITES+1, 0  ; Raster line from which it may be loaded ($ff: end)
-sort_p:             !byte 0
-irq_tmp:            !byte 0                 ; Scratch of the display interrupt
 
 ; Sprite enable table for $d015
 d015_table:         !byte %00000000

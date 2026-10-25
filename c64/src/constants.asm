@@ -50,6 +50,14 @@ zp_path         = $f7        ; flight path table pointer (word)
 zp_col          = $f9        ; colour RAM pointer (word)
 zp_src          = $fb        ; string source (word)
 zp_dst          = $fd        ; screen destination (word)
+; the multiplexer's scalars (BASIC's zero page: free, the game never calls BASIC; the KERNAL does not touch $02-$08)
+spr_irq_counter = $02
+sort_p          = $03
+sort_prev       = $04
+sort_ky         = $05
+sort_key        = $06
+sort_temp_x     = $07
+irq_tmp         = $08        ; scratch of the display interrupt
 
 ; Game Constants
 MAX_ENEMIES     = 32
