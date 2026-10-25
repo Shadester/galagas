@@ -32,9 +32,9 @@ for name in ('bee', 'bfly', 'boss'):
 purple = {art.TONE['green'][i]: art.TONE['purple'][i] for i in range(7)}
 for f, rows in load('boss').items():
     cells[f'bossp_{f}'] = master.recolour(rows, purple)
-for i, f in enumerate('abc'):
+for i, f in enumerate(load('xa')):                                # the 5 steps of an alien's burst, the 6 of the fighter's (art/master/explode.py)
     cells[f'xa{i}'] = load('xa')[f]
-for i, f in enumerate('abcd'):
+for i, f in enumerate(load('xp')):
     cells[f'xp{i}'] = load('xp')[f]
 for f, rows in load('bomb').items():
     cells[f'bomb_{f}'] = centred(rows)

@@ -154,8 +154,9 @@ static void saveHighScore(void) {
 
 /* -------------------------------------------------------------- textures */
 enum { X2_SHOT = 1, X2_BOMB = 2 };                         /* the second row of the atlas (the glow is at 0): the shot, the bomb (2 frames) */
-enum { X_BEE = 0, X_BFLY = 2, X_BOSS = 4, X_BOSSP = 6, X_PLAYER = 8, X_XA = 9, X_XP = 12 };
-static unsigned int __attribute__((aligned(16))) atlas[512 * 64];   /* 32x32 cells (art32.h), glow at (0,32) */
+enum { X_BEE = 0, X_BFLY = 2, X_BOSS = 4, X_BOSSP = 6, X_PLAYER = 8 };
+enum { X3_XA = 0, X3_XP = 5 };                                 /* the third row (y 64) of the atlas: the 5 steps of an alien's burst, the 6 of the fighter's */
+static unsigned int __attribute__((aligned(16))) atlas[512 * 128];  /* 32x32 cells (art32.h), glow at (0,32), the bursts in the third row */
 static unsigned int __attribute__((aligned(16))) fontTex[128 * 64]; /* ASCII 32..127, 8x8 */
 static unsigned int __attribute__((aligned(16))) logoTex[LOGO_W * LOGO_H];
 
@@ -164,6 +165,13 @@ static void cell(int idx, ArtRows32 rows) {                  /* art32.h: letters
     for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x) {
         unsigned char ch = (unsigned char)rows[y][x];
         atlas[y * 512 + idx * 32 + x] = ch == '.' ? 0 : RGB(art32_rgb[ch][0], art32_rgb[ch][1], art32_rgb[ch][2]);
+    }
+}
+static void cell3(int idx, ArtRows32 rows) {
+    int x, y;
+    for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x) {
+        unsigned char ch = (unsigned char)rows[y][x];
+        atlas[(64 + y) * 512 + idx * 32 + x] = ch == '.' ? 0 : RGB(art32_rgb[ch][0], art32_rgb[ch][1], art32_rgb[ch][2]);
     }
 }
 static void cell2(int idx, ArtRows32 rows) {
@@ -180,8 +188,8 @@ static void buildTextures(void) {
     cell(X_BOSS, art32_boss_a); cell(X_BOSS + 1, art32_boss_b);
     cell(X_BOSSP, art32_bossp_a); cell(X_BOSSP + 1, art32_bossp_b);
     cell(X_PLAYER, art32_player);
-    cell(X_XA, art32_xa0); cell(X_XA + 1, art32_xa1); cell(X_XA + 2, art32_xa2);
-    cell(X_XP, art32_xp0); cell(X_XP + 1, art32_xp1); cell(X_XP + 2, art32_xp2); cell(X_XP + 3, art32_xp3);
+    cell3(X3_XA, art32_xa0); cell3(X3_XA + 1, art32_xa1); cell3(X3_XA + 2, art32_xa2); cell3(X3_XA + 3, art32_xa3); cell3(X3_XA + 4, art32_xa4);
+    cell3(X3_XP, art32_xp0); cell3(X3_XP + 1, art32_xp1); cell3(X3_XP + 2, art32_xp2); cell3(X3_XP + 3, art32_xp3); cell3(X3_XP + 4, art32_xp4); cell3(X3_XP + 5, art32_xp5);
     cell2(X2_SHOT, art32_shot); cell2(X2_BOMB, art32_bomb_a); cell2(X2_BOMB + 1, art32_bomb_b);
     for (y = 0; y < 32; ++y) for (x = 0; x < 32; ++x) {   /* soft radial glow */
         float dx = (x - 15.5f) / 16, dy = (y - 15.5f) / 16, d = 1 - sqrtf(dx * dx + dy * dy);
@@ -204,7 +212,7 @@ static void useTex(int t) {
     curTex = t;
     if (t == TX_NONE) { sceGuDisable(GU_TEXTURE_2D); return; }
     sceGuEnable(GU_TEXTURE_2D);
-    if (t == TX_ATLAS) sceGuTexImage(0, 512, 64, 512, atlas);
+    if (t == TX_ATLAS) sceGuTexImage(0, 512, 128, 512, atlas);
     else if (t == TX_FONT) sceGuTexImage(0, 128, 64, 128, fontTex);
     else sceGuTexImage(0, LOGO_W, LOGO_H, LOGO_W, logoTex);
 }
@@ -232,16 +240,6 @@ static void vgrad(float x, float y, float w, float h, unsigned top, unsigned bot
     sceGuDrawArray(GU_TRIANGLE_STRIP, GU_COLOR_8888 | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 4, NULL, v);
 }
 /* Horizontal trapezoid, full colour at both edges, for the tractor beam. */
-static void trap(float cx, float y0, float hw0, float y1, float hw1, unsigned c0, unsigned c1) {
-    CVert *v;
-    useTex(TX_NONE);
-    v = sceGuGetMemory(4 * sizeof *v);
-    v[0].color = v[1].color = c0; v[2].color = v[3].color = c1;
-    v[0].x = (short)(cx - hw0); v[1].x = (short)(cx + hw0); v[2].x = (short)(cx - hw1); v[3].x = (short)(cx + hw1);
-    v[0].y = v[1].y = (short)y0; v[2].y = v[3].y = (short)y1;
-    v[0].z = v[1].z = v[2].z = v[3].z = 0;
-    sceGuDrawArray(GU_TRIANGLE_STRIP, GU_COLOR_8888 | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 4, NULL, v);
-}
 /* Atlas cell centred at (cx, cy), drawn size x size (32: one texel for a pixel; 64: every texel twice). */
 static void sprRow(int idx, int row, float cx, float cy, float size, unsigned tint) {
     TVert *v;
@@ -351,18 +349,35 @@ static void drawFighter(float cx, float cy, unsigned tint) {
     glow(cx, cy + 14, 30, RGBA(80, 160, 255, 70));
     spr(X_PLAYER, cx, cy, 32, tint);
 }
+/* One ring of the tractor beam: a polyline across the cone, bowed (sag) near the boss and with the ends curled up, like the arcade's rings. */
+static void beamRing(float cx, float y, float hw, float sag, unsigned color) {
+    enum { N = 13 };
+    CVert *v;
+    int i;
+    useTex(TX_NONE);
+    v = sceGuGetMemory(N * sizeof *v);
+    for (i = 0; i < N; ++i) {
+        float u = -1 + 2.f * i / (N - 1), au = u < 0 ? -u : u;
+        v[i].color = color;
+        v[i].x = (short)lrintf(cx + u * hw);
+        v[i].y = (short)lrintf(y + sag * u * u - (au > .75f ? (au - .75f) * 6 : 0));
+        v[i].z = 0;
+    }
+    sceGuDrawArray(GU_LINE_STRIP, GU_COLOR_8888 | GU_VERTEX_16BIT | GU_TRANSFORM_2D, N, NULL, v);
+}
+/* The beam: 4 rings for each row of 8 game units (the arcade's are a ring every 2 pixels), a cone that is teal near the boss and blue at the bottom; a bright ring runs down it. */
 static void drawBeam(void) {
     const Alien *b = &g.al[g.capBoss];
     float cx = fx(lerpi(prev.al[g.capBoss].x, b->x) + 12), top = fy(b->y + 14);
-    static const unsigned char pulse[4][3] = {{40,90,255},{100,170,255},{80,230,255},{100,170,255}};
-    int r, n = g.cap == C_BEAM ? g.beamLen : 4;
+    int rows = g.cap == C_BEAM ? g.beamLen : 4, k, nrings = rows * 4;
     blendAdd();
-    for (r = 0; r < n; ++r) {
-        int c = (r + (g.frame >> 2)) & 3;
-        float hw0 = (2 + r) * 8 * PLAY_SC * .5f + 6, hw1 = (3 + r) * 8 * PLAY_SC * .5f + 6;
-        float y0 = top + r * 8 * PLAY_SC, y1 = y0 + 8 * PLAY_SC;
-        trap(cx, y0, hw0, y1, hw1, RGBA(pulse[c][0], pulse[c][1], pulse[c][2], 150), RGBA(pulse[c][0], pulse[c][1], pulse[c][2], 150));
-        rect(cx - hw0, y0, 2, y1 - y0, RGBA(200, 240, 255, 120)); rect(cx + hw0 - 2, y0, 2, y1 - y0, RGBA(200, 240, 255, 120));
+    for (k = 0; k < nrings; ++k) {
+        float t = k / 15.f, yr = k / 4.f;
+        float hw = (2 + yr) * 8 * PLAY_SC * .5f + 6, sag = k < 8 ? 6.f - k * .75f : 0;
+        int lit = ((k - (g.frame >> 2)) & 3) == 0;                       /* the bright ring moves down one ring each 4 ticks */
+        int r = (int)(60 + 20 * t), gg = (int)(215 - 95 * t), bl = (int)(190 + 65 * t);
+        if (lit) { r = 200; gg = 255; bl = 255; }
+        beamRing(cx, top + k * 2.5f, hw, sag, RGBA(r, gg, bl, lit ? 255 : 190));
     }
     blendNormal();
 }
@@ -376,9 +391,10 @@ static void drawAliens(void) {
         y = p->st == a->st || p->st == A_ENTER ? lerpi(p->y, a->y) : a->y;
         cx = fx(x + 12); cy = fy(y + 6);
         if (a->st == A_EXPLODE) {
-            int f = 2 - (a->timer >> 2);
-            glow(cx, cy, 52, RGBA(255, 140, 40, 150 - f * 40));
-            spr(X_XA + f, cx, cy, 32, 0xffffffff);
+            int f = (G_EXPL_TICKS - a->timer) >> 2;                   /* 5 steps of 4 ticks */
+            f = f < 0 ? 0 : f > 4 ? 4 : f;
+            if (f < 3) glow(cx, cy, 40 + f * 8, RGBA(255, 150, 60, 110 - f * 30));
+            sprRow(X3_XA + f, 2, cx, cy, 44, 0xffffffff);                    /* (the burst is wider than an alien: the art fills its cell) */
             continue;
         }
         if (a->type == T_BOSS) {
@@ -405,10 +421,12 @@ static void drawPlayer(void) {
     float x = lerpi(prev.px, g.px), cy = fy(g.py + 7);
     int show = g.state == S_INTRO || g.state == S_PLAY || g.state == S_RESULT || g.state == S_CAPTURED;
     if (g.state == S_DYING && !g.dyingQuiet) {
-        int f = 3 - (g.stateTimer >> 4);
+        int f = (G_DIE_TICKS - g.stateTimer) >> 3;                         /* 6 steps of 8 ticks, then nothing until the ship is back */
         float cx = fx(g.px + 12 + (g.dual ? 8 : 0));
-        glow(cx, cy, 70 + f * 14, RGBA(255, 200, 100, 120 - f * 20));
-        spr(X_XP + f, cx, cy, 64, 0xffffffff);
+        if (f < 6) {
+            if (f < 3) glow(cx, cy, 60 + f * 14, RGBA(255, 200, 100, 120 - f * 35));
+            sprRow(X3_XP + f, 2, cx, cy, 72, 0xffffffff);
+        }
         return;
     }
     if (!show || (g.state == S_PLAY && (g.invuln & 4))) return;

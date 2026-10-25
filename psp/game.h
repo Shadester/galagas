@@ -17,6 +17,11 @@
 #endif
 #define TICK_HZ 50
 
+/* The explosions (all ports draw the same steps): an alien bursts for G_EXPL_TICKS ticks in 5 steps of 4 (the arcade burst is 5 steps of about 4 ticks, then gone: before this it was
+ * the C64's 11 ticks); the fighter's burst is 6 steps of 8 ticks at the start of its 107 dead ticks (step = (107 - stateTimer) >> 3). */
+#define G_EXPL_TICKS 20
+#define G_DIE_TICKS 107
+
 /* The geometry of the field, in game units (2 units are one Lynx pixel; x / y are the top left of a sprite box). The default is the C64 field: x 24..343, y 50..249,
  * 24 x 21 sprites. -DRULES_PORTRAIT is the arcade's own portrait field at 0.88 units per arcade pixel (see tools/gen_arcade.py portrait): 16 x 16 sprites. */
 #ifdef RULES_PORTRAIT

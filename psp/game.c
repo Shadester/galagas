@@ -129,7 +129,7 @@ static void player_hit(Game *g, int side) {
     }
     --g->lives;
     g->state = S_DYING; g->dyingQuiet = 0;
-    g->stateTimer = 107;   /* the arcade waits 4 x 32 frames before the ship comes back */
+    g->stateTimer = G_DIE_TICKS;   /* the arcade waits 4 x 32 frames before the ship comes back */
     memset(g->eb, 0, sizeof g->eb); memset(g->ps, 0, sizeof g->ps);
     g->snd |= SND_HIT | SND_DEATH;
 }
@@ -174,7 +174,7 @@ static void alien_hit(Game *g, int i) {
             pts += 1000; g->snd |= JG_RESCUE;
         } else g->cap = C_NONE;   /* captive lost, or capture cancelled (beam vanishes) */
     }
-    a->st = A_EXPLODE; a->timer = 11; g->snd |= SND_EXPLODE;
+    a->st = A_EXPLODE; a->timer = G_EXPL_TICKS; g->snd |= SND_EXPLODE;
     add_score(g, pts);
 }
 
@@ -345,7 +345,7 @@ static void update_aliens(Game *g) {
 #endif
             break;
 #ifdef RULES_ARCADE32
-        case A_EXPLODE: if (--a->timer <= 0) a->st = A_DEAD; break;   /* the C64's explosion lasts 11 ticks */
+        case A_EXPLODE: if (--a->timer <= 0) a->st = A_DEAD; break;   /* the burst lasts G_EXPL_TICKS ticks */
 #else
         case A_EXPLODE: if (--a->timer < 0) a->st = A_DEAD; break;
 #endif
@@ -506,7 +506,7 @@ static void update_collisions(Game *g) {
             if (a->y >= g->py - G_HB_RAM_Y0 && a->y <= g->py + G_HB_RAM_Y1 && a->x > sx - G_HB_RAM_X && a->x <= sx + G_HB_RAM_X) {
                 if (a->capdive) release_capture(g, j);   /* ramming boss drops its captive */
                 if (a->type == T_BOSS && g->cap == C_CARRY && g->capBoss == j) g->cap = C_NONE;
-                a->st = A_EXPLODE; a->timer = 11; g->snd |= SND_EXPLODE;
+                a->st = A_EXPLODE; a->timer = G_EXPL_TICKS; g->snd |= SND_EXPLODE;
                 player_hit(g, s); break;
             }
         }
