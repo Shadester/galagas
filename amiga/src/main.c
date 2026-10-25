@@ -149,7 +149,7 @@ static void alien_wants(const Alien *al, Obj *w, int anim, int challenge, int sc
         const Alien *a = &al[i];
         int id;
         if (a->st == A_DEAD || (a->st == A_ENTER && a->ent == 0)) { w[i].id = -1; w[i].x = w[i].y = 0; continue; }
-        if (a->st == A_EXPLODE) { int f = 2 - (a->timer >> 2); id = SPR_EXPL1 + (f < 0 ? 0 : f > 2 ? 2 : f); }
+        if (a->st == A_EXPLODE) { int f = (G_EXPL_TICKS - a->timer) >> 2; id = SPR_EXPL1 + (f < 0 ? 0 : f > 4 ? 4 : f); }
         else if (a->type == T_BOSS && a->hp == 1 && !challenge) id = SPR_BOSSP_A + anim;
         else id = (a->type == T_BOSS ? SPR_BOSS_A : a->type == T_BUTTERFLY ? SPR_BFLY_A : SPR_BEE_A) + anim;
         w[i].id = id; w[i].x = a->x - 24 - sc; w[i].y = a->y - 50 + TOP - (a->st == A_EXPLODE ? 2 : 0);
@@ -204,7 +204,7 @@ static void draw(const Game *g) {
         if (prof_on) prof_acc[10] += now_lines() - pa;
 #endif
         if (g->state == S_DYING) {
-            if (!g->dyingQuiet) { int f = 3 - (g->stateTimer >> 4); video_bob(SLOT_SHIP, SPR_PEXP1 + (f < 0 ? 0 : f > 3 ? 3 : f), SX(g->px - 1), SY(g->py - 5)); }
+            if (!g->dyingQuiet) { int f = (G_DIE_TICKS - g->stateTimer) >> 3; if (f < 6) video_bob(SLOT_SHIP, SPR_PEXP1 + f, SX(g->px - 1), SY(g->py - 5)); }
         } else if (g->state != S_READY && !(g->invuln & 4)) {
             video_ship(0, g->px + 3 - 24, SY(g->py - 2));                  /* hardware sprites: the playfield scroll does not move them */
             if (g->dual) video_ship(1, g->px + 19 - 24, SY(g->py - 2));

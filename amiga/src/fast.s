@@ -104,15 +104,15 @@ alien_wants:
         sub.w   d1,d0
         move.w  d0,(a1)+
         bra.s   8f
-6:      move.l  20(a0),d2               | the explosion: frame 2 - timer / 4, 0 .. 2
-        asr.l   #2,d2
+6:      move.l  20(a0),d2               | the explosion: frame (G_EXPL_TICKS - timer) / 4, 0 .. 4
         neg.l   d2
-        addq.l  #2,d2
+        add.l   #20,d2                  | G_EXPL_TICKS
+        asr.l   #2,d2
         bge.s   7f
         moveq   #0,d2
-7:      cmp.l   #2,d2
+7:      cmp.l   #4,d2
         ble.s   71f
-        moveq   #2,d2
+        moveq   #4,d2
 71:     add.w   #12,d2                  | SPR_EXPL1
         moveq   #2,d1
         bra.s   5b

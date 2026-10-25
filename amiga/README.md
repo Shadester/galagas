@@ -44,7 +44,7 @@ What is different:
 
 - The play area is 320 x 200 pixels, the same as the C64: the game keeps the C64 coordinates, and an alien is the C64 sprite (24 x 22 pixels). The hud (score, hi-score, stage and the lives) is above the play area. The copper shows the play area shifted to the left or right, so the formation sways without being drawn again.
 - 32 colours, 5 bitplanes. The aliens, the fighter and the explosions are drawn by hand (`../art`: scripts, shared with the PSP version), at their own size: 24 pixels wide, 4 tones for each colour (7 on an AGA machine). The fighter and its shots are hardware sprites (the fighter: two attached sprites, 15 colours, 16 pixels wide; the stars and the shots use sprites 4 to 7). The aliens and bombs are drawn by the blitter into a buffer that is not shown (three buffers). Text is made of sprites too, so it needs no CPU. The hot loops are in assembly (`src/fast.s`, with the same code in C for tests).
-- The tractor beam is 4 rows of checkerboard cells. The blitter draws each row as one sprite (16 pictures: 4 rows, 4 phases). The stars are hardware sprites (two layers, in fixed columns, as in the arcade game).
+- The tractor beam is a cone of thin rings, like the arcade's (4 rows of 4 rings; a light ring runs down it). The blitter draws each row as one sprite (16 pictures: 4 rows, 4 phases). The explosions are bursts of scattered pixels (5 steps for an alien, 6 for the fighter). The stars are hardware sprites (two layers, in fixed columns, as in the arcade game).
 - Sound is made by Paula: 8-bit samples for the effects (made by `tools/gen_assets.py`) and a square wave for the jingles.
 - **The hi-score is not saved.** It stays until you reset the machine. Writing to the floppy disk is too risky.
 

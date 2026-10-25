@@ -69,8 +69,8 @@ def planar(rows, mask, npl=None):
 def sprite_list(aga=False):
     sp = [(f'{n}_{f}', art.hand(f'{n}_{f}', aga)) for n in ('bee', 'bfly', 'boss', 'bossp') for f in 'ab']      # the AGA aliens have 7 tones for each colour, the OCS ones 4
     sp += [('ship', art.ship()), ('captive', art.captive()), ('pbul', art.PBUL), ('ebul', art.EBUL)]
-    sp += [(f'expl{n}', art.explosion(f'xa{n - 1}')) for n in (1, 2, 3)]
-    sp += [(f'pexp{n}', art.explosion(f'xp{n - 1}')) for n in (1, 2, 3, 4)]
+    sp += [(f'expl{n}', art.explosion(f'xa{n - 1}')) for n in (1, 2, 3, 4, 5)]      # the 5 steps of an alien's burst (art/master/explode.py)
+    sp += [(f'pexp{n}', art.explosion(f'xp{n - 1}')) for n in (1, 2, 3, 4, 5, 6)]  # the 6 steps of the fighter's
     sp.append(('life', art.small_ship()))
     sp.append(('ebul2', art.EBUL2))                                 # (last: the ids of the others stay, fast.s knows some)
     return sp
@@ -153,18 +153,28 @@ def glyph_list():
     return out
 
 
-BEAM_PENS = 'CLwL'                                                 # the pens of the beam cells (video.c): cyan, light blue, white, light blue
-
-
 def beam_list():
-    """The tractor beam: row r (0 .. 3) is 2r + 5 cells of 8 x 8 pixels, a checkerboard in the pens BEAM_PENS (cell k has pen (k + r + phase) mod 4):
-    one sprite for each row and phase, drawn by the blitter. Id = SPR_BEAM + 4 * r + phase."""
+    """The tractor beam, after the arcade: a cone of thin rings (a ring every 2 lines, 4 in a row of 8 lines). Row r is 8 * (2r + 5) pixels wide; the ring k = 4r + j of the whole cone
+    has the half width 12 + 1.4k pixels (the arcade's cone is 15 pixels wide at the top and 44 at the bottom), is bowed near the boss (the ends lower by up to 2 lines) and curls up at the ends. Colour: teal near the boss, cyan, blue at the bottom; every 4th ring is
+    light, and which ones are light moves down with the phase. One sprite for each row and phase: id = SPR_BEAM + 4 * r + phase (video.c beam_now)."""
     out = []
     for r in range(4):
+        w = 8 * (2 * r + 5)
         for phase in range(4):
-            cells = 2 * r + 5
-            rows = [''.join(BEAM_PENS[(x // 8 + r + phase) % 4] if (x + line + x // 8) % 2 == 0 else '.' for x in range(8 * cells)) for line in range(8)]
-            out.append(('beam', rows))
+            grid = [['.'] * w for _ in range(8)]
+            for j in range(4):
+                k = 4 * r + j
+                hw = 12 + 1.4 * k
+                sag = 2 if k < 4 else 1 if k < 8 else 0
+                pen = 'L' if (k - phase) % 4 == 0 else 'D' if k < 5 else 'C' if k < 11 else 'B'
+                for x in range(w):
+                    u = (x + .5 - w / 2) / hw
+                    if abs(u) > 1:
+                        continue
+                    line = 2 * j + round(sag * u * u) - (1 if abs(u) > .8 else 0)
+                    if 0 <= line < 8:
+                        grid[line][x] = pen
+            out.append(('beam', [''.join(row) for row in grid]))
     return out
 
 

@@ -111,6 +111,6 @@ def small_ship():
 
 
 def explosion(name):
-    """xa0 .. xa2: an alien, xp0 .. xp3: the fighter; 24 x 24, in fixed colours."""
+    """xa0 .. xa4: an alien, xp0 .. xp5: the fighter; 24 x 24, in fixed colours."""
     master, _ = _tools()
-    return master.load(name[:2], '.24')[2]['abcd'[int(name[2])]]
+    return master.load(name[:2], '.24')[2]['abcdef'[int(name[2])]]
