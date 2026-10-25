@@ -644,7 +644,7 @@ static void beam_now(void) {
     int r;
     for (r = 0; r < beam_req.rows; ++r) {
         int cells = 2 * r + 5, xb = beam_req.x - cells * 4 + GUARD, yy = beam_req.y + r * 8;
-        Obj o = {SPR_BEAM + 4 * r + (beam_req.phase & 3), (xb & ~7) - GUARD, yy};      /* (a cell starts at a multiple of 8 pixels) */
+        Obj o = {SPR_BEAM + 4 * r + (beam_req.phase & 3), xb - GUARD, yy};      /* (at any pixel: the beam is centred under the boss) */
         Place p;
         Rect rc;
         if (yy < TOP || yy + 8 > SCREEN_H) continue;
