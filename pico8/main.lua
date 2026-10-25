@@ -99,16 +99,16 @@ end
 function draw_beam()
  local b=al[capBoss]
  local bx,row0,ph=cx(b.x,12),(b.y-36)\8,(frame\4)&3
- fillp(0x5a5a.1)
  for r=0,beamLen-1 do
-  -- the c64 text row under the boss (not offset by 50, as in thumby view.py), 4 high, centred on its middle
-  local cells,y=2*r+5,12+((row0+r)*8+4)*14\25
-  local x=bx-cells*3\2
-  for k=0,cells-1 do
-   rectfill(x+k*3,y,x+k*3+2,y+3,({12,6,7,6})[(k+r+ph)%4+1])
+  -- the c64 text row under the boss (not offset by 50, as in thumby view.py), 4 high: 2 rings, a cone 12 px wide at the top and 32 at the bottom, a bright ring that runs down
+  local y=12+((row0+r)*8+4)*14\25
+  for j=0,1 do
+   local k,yy=r*2+j,y+j*2
+   local hw,c=6+k*1.45,(k-ph)%4==0 and 7 or k<2 and 3 or 12
+   line(bx-hw,yy,bx+hw,yy,c)
+   pset(bx-hw,yy-1,c) pset(bx+hw,yy-1,c)
   end
  end
- fillp()
 end
 
 function draw_msgs()
@@ -163,14 +163,14 @@ function _draw()
    local st=a.st
    if st~=A_DEAD and not (st==A_ENTER and a.ent==0) then
     local id=4-2*a.ty+anim
-    if st==A_EXPLODE then id=12+mid(0,2-a.timer\4,2)
+    if st==A_EXPLODE then id=12+mid(0,(20-a.timer)\4,4)
     elseif a.ty==T_BOSS and a.hp==1 and not challenge then id=6+anim end
     sp(id,cx(a.x,12),cy(a.y,6))
    end
   end
   local x,y=cx(px,12),cy(py,7)
   if state==S_DYING then
-   if not dyingQuiet then sp(15+mid(0,3-stateTimer\16,3),x,y) end
+   if not dyingQuiet then local f=(107-stateTimer)\8 if f<6 then sp(({17,18,14,15,16,16})[f+1],x,y) end end
   elseif state~=S_READY and invuln&4==0 then
    sp(8,x,y)
    if dual then sp(8,x+6,y) end

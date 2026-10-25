@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Make galaga.p8: the sprite sheet, the title picture and the sound effects (the Lua files are included, not copied).
 
-  gfx rows 0..23    20 sprites in 12 x 12 cells, 10 per row (ids: SPRITE_NAMES, the same order as thumby's sprite_ids.py)
+  gfx rows 0..23    20 sprites in 12 x 12 cells, 10 per row (the order of thumby sprite_ids.py without PEXP3 .. PEXP6: LIFE is 19)
   gfx rows 64..127  the title picture, 128 x 64, dithered to the PICO-8 palette (this half of the sheet is also the map: not used)
   sfx 0..4          shoot, explode, hit, death, swoop
   label             the title picture (the cart's picture in the .p8.png)
@@ -24,7 +24,9 @@ import gen_assets as T  # noqa: E402  (builds the sprite art on import)
 import gen_arcade_p8 as A  # noqa: E402  (the flight paths of the arcade rules: a blob in the free rows 24..63 and in the map)
 
 # thumby art letters -> PICO-8 colours
-PEN = {'.': 0, 'w': 7, 'r': 8, 'b': 12, 'c': 6, 'y': 10, 'g': 11, 'p': 14, 'o': 9, 'l': 6, 'f': 15}
+# the sheet has room for 20 cells: of the fighter's 6 burst steps only the first 2 have a cell of their own (main.lua draws the last 4 with the alien's rings)
+SPRITES = [s for s in T.SPRITES if s[0] not in ('pexp3', 'pexp4', 'pexp5', 'pexp6')]
+PEN = {'.': 0, 'w': 7, 'r': 8, 'b': 12, 'c': 6, 'y': 10, 'g': 11, 'p': 14, 'o': 9, 'l': 6, 'f': 15, 'd': 3}
 PAL = ['000000', '1D2B53', '7E2553', '008751', 'AB5236', '5F574F', 'C2C3C7', 'FFF1E8',
        'FF004D', 'FFA300', 'FFEC27', '00E436', '29ADFF', '83769C', 'FF77A8', 'FFCCAA']
 CELL, COLS = 12, 10
@@ -32,7 +34,7 @@ CELL, COLS = 12, 10
 
 def gfx():
     px = [[0] * 128 for _ in range(128)]
-    for i, (name, art) in enumerate(T.SPRITES):
+    for i, (name, art) in enumerate(SPRITES):
         w, h = max(len(r) for r in art), len(art)
         ox, oy = i % COLS * CELL + (CELL - w) // 2, i // COLS * CELL + (CELL - h) // 2
         for y, r in enumerate(art):

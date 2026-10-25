@@ -306,7 +306,7 @@ function alien_hit(i)
   end
  end
  a.st=A_EXPLODE
- a.timer=11
+ a.timer=20 -- an alien bursts for 20 ticks in 5 steps of 4 (psp/game.h G_EXPL_TICKS)
  snd|=SND_EXPLODE
  add_score(pts)
 end
@@ -692,7 +692,7 @@ function update_collisions()
      if a.capdive then release_capture(j) end -- ramming boss drops its captive
      if a.ty==T_BOSS and cap==C_CARRY and capBoss==j then cap=C_NONE end
      a.st=A_EXPLODE
-     a.timer=11
+     a.timer=20 -- an alien bursts for 20 ticks in 5 steps of 4 (psp/game.h G_EXPL_TICKS)
      snd|=SND_EXPLODE
      player_hit(s)
      break
