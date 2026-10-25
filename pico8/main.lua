@@ -104,9 +104,9 @@ function draw_beam()
   local y=12+((row0+r)*8+4)*14\25
   for j=0,1 do
    local k,yy=r*2+j,y+j*2
-   local hw,c=6+k*1.45,(k-ph)%4==0 and 7 or k<2 and 3 or 12
-   line(bx-hw,yy,bx+hw,yy,c)
-   pset(bx-hw,yy-1,c) pset(bx+hw,yy-1,c)
+   local hw,c=(6+k*1.45)\1,(k-ph)%4==0 and 7 or k<2 and 3 or 12
+   line(bx-hw,yy,bx+hw-1,yy,c) -- 2 hw pixels: the middle is between bx - 1 and bx, like the 12 pixel picture of the boss
+   pset(bx-hw,yy-1,c) pset(bx+hw-1,yy-1,c)
   end
  end
 end
