@@ -4,7 +4,7 @@ A Galaga clone for the Commodore 64, written in 6502 assembly ([ACME](https://so
 
 ![Gameplay: the title screen, then the autoplay build with stage intro, fly-in and a tractor beam](docs/gameplay.gif)
 
-**[▶ Play in the browser](https://vc64web.github.io/#openROMS=true#https://raw.githubusercontent.com/Shadester/galagas/af124285d082962a19bac955938557a5e5fb5e5a/c64/docs/galaga.prg)** (runs in the [vc64web](https://vc64web.github.io) emulator; set up a joystick or keyset in its settings, see Controls below. The hi-score is not saved there.)
+**[▶ Play in the browser](https://vc64web.github.io/#openROMS=true#https://raw.githubusercontent.com/Shadester/galagas/a5fbb8671e70852b3d527548ebd50d5120794e99/c64/docs/galaga.prg)** (runs in the [vc64web](https://vc64web.github.io) emulator; set up a joystick or keyset in its settings, see Controls below. The hi-score is not saved there.)
 
 ## Features
 

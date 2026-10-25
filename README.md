@@ -9,7 +9,7 @@
 
 <p align="center">
   <b>Play in your browser:</b>
-  <a href="https://vc64web.github.io/#openROMS=true#https://raw.githubusercontent.com/Shadester/galagas/af124285d082962a19bac955938557a5e5fb5e5a/c64/docs/galaga.prg"><b>▶ C64</b></a> ·
+  <a href="https://vc64web.github.io/#openROMS=true#https://raw.githubusercontent.com/Shadester/galagas/a5fbb8671e70852b3d527548ebd50d5120794e99/c64/docs/galaga.prg"><b>▶ C64</b></a> ·
   <a href="https://shadester.github.io/galagas/pico8/"><b>▶ PICO-8</b></a> ·
   <a href="https://shadester.github.io/galagas/lynx/"><b>▶ Atari Lynx Landscape</b></a> ·
   <a href="https://shadester.github.io/galagas/lynx/portrait.html"><b>▶ Atari Lynx Portrait</b></a> ·
