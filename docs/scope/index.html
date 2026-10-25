@@ -61,15 +61,15 @@
     const out = [];
     let cx = 2047.5, cy = 2047.5;
     const put = (px, py) => out.push(px / 2047.5 - 1, py / 2047.5 - 1);
-    const walk = (x1, y1, step) => {
-      const d = Math.hypot(x1 - cx, y1 - cy), k = Math.max(2, Math.ceil(d / step));
+    const walk = (x1, y1, step, min) => {
+      const d = Math.hypot(x1 - cx, y1 - cy), k = Math.max(min, Math.ceil(d / step));
       for (let i = 1; i <= k; i++) put(cx + (x1 - cx) * i / k, cy + (y1 - cy) * i / k);
       cx = x1; cy = y1;
     };
     for (let i = 0; i < n; i++) {
       const o = i * 4;
-      walk(s[o], s[o + 1], SPEED * 6);                     // the jump to the start of the line: fast
-      walk(s[o + 2], s[o + 3], SPEED);
+      walk(s[o], s[o + 1], SPEED * 6, 0);                  // the jump to the start of the line: fast, and no samples when the line starts where the last one ended
+      walk(s[o + 2], s[o + 3], SPEED, 2);
     }
     return Float32Array.from(out);
   }
