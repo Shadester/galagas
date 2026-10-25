@@ -95,26 +95,41 @@ impl Pen<'_> {
         }
     }
 
-    fn burst(&mut self, cx: f32, cy: f32, rays: i32, r0: f32, r1: f32) {
+    /// A burst of the arcade: `n` short radial dashes (single pixels on a raster screen) between the radii r0 and r1; `seed` makes every step another scatter.
+    fn burst(&mut self, cx: f32, cy: f32, n: i32, r0: f32, r1: f32, seed: i32) {
         self.next();
-        for i in 0..rays {
-            let t = i as f32 * std::f32::consts::TAU / rays as f32 + 0.3;
-            self.line(cx + t.cos() * r0, cy + t.sin() * r0, cx + t.cos() * r1, cy + t.sin() * r1);
+        for j in 0..n {
+            let t = j as f32 * 2.399_963 + seed as f32 * 1.7;
+            let r = r0 + (r1 - r0) * (((j * 7 + seed * 3) % n.max(1)) as f32 / n.max(1) as f32);
+            self.line(cx + t.cos() * r, cy + t.sin() * r, cx + t.cos() * (r + 1.6), cy + t.sin() * (r + 1.6));
         }
     }
 
+    /// The first step of a burst: a small cross.
+    fn star(&mut self, cx: f32, cy: f32, r: f32) {
+        self.next();
+        self.line(cx - r, cy, cx + r, cy);
+        self.line(cx, cy - r, cx, cy + r);
+    }
+
+    /// The tractor beam: a cone of thin rings (one every 2 game pixels), the first ones bowed; a ring that is lit is drawn twice (the beam rests twice on it: brighter), and which ones are lit runs down.
     fn beam(&mut self, g: &Game) {
         self.next();
         let b = &g.al[g.cap_boss as usize];
         let n = if g.cap == C_BEAM { g.beam_len } else { 4 };
         let (cx, y0) = (b.x as f32 - 12.0, b.y as f32 - 44.0 + 14.0);
-        for r in 0..n {
-            let (ya, yb) = (y0 + r as f32 * 8.0, y0 + r as f32 * 8.0 + 8.0);
-            let (wa, wb) = (((2 + r) * 4 + 4) as f32, ((3 + r) * 4 + 4) as f32);
-            self.line(cx - wa, ya, cx - wb, yb);
-            self.line(cx + wa, ya, cx + wb, yb);
-            let s = if (r + (g.frame >> 2)) & 1 == 0 { 1.0 } else { -1.0 }; // the zigzag between the sides runs
-            self.line(cx - wa * s, ya, cx + wb * s, yb);
+        for i in 0..n * 4 {
+            let y = y0 + i as f32 * 2.0;
+            let hw = 12.0 + i as f32 * 1.4;
+            let lit = (i - (g.frame >> 2)).rem_euclid(4) == 0;
+            for _ in 0..if lit { 2 } else { 1 } {
+                if i < 3 {
+                    self.line(cx - hw, y + 1.0, cx, y);
+                    self.line(cx, y, cx + hw, y + 1.0);
+                } else {
+                    self.line(cx - hw, y, cx + hw, y);
+                }
+            }
         }
     }
 
@@ -278,8 +293,14 @@ pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
         }
         let (cx, cy) = (a.x as f32 - 12.0, a.y as f32 - 44.0);
         if a.st == A_EXPLODE {
-            let f = (2 - (a.timer >> 2)).clamp(0, 2) as f32;
-            p.burst(cx, cy, 6, 1.0 + f * 2.0, 4.0 + f * 4.0);
+            let f = ((G_EXPL_TICKS - a.timer) >> 2).clamp(0, 4);
+            match f {
+                0 => p.star(cx, cy, 2.0),
+                1 => p.burst(cx, cy, 10, 2.0, 6.0, f),
+                2 => p.burst(cx, cy, 16, 3.0, 9.0, f),
+                3 => p.burst(cx, cy, 22, 7.0, 13.0, f),
+                _ => p.burst(cx, cy, 12, 10.0, 15.0, f),
+            }
             continue;
         }
         match a.typ {
@@ -303,9 +324,17 @@ pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
     }
     let show = matches!(g.state, S_INTRO | S_PLAY | S_RESULT | S_CAPTURED);
     if g.state == S_DYING && g.dying_quiet == 0 {
-        let f = (3 - (g.state_timer >> 4)).clamp(0, 3) as f32;
-        let sx = g.px as f32 + 12.0 - 24.0 + if g.dual != 0 { 8.0 } else { 0.0 };
-        p.burst(sx, g.py as f32 + 7.0 - 50.0, 8, 2.0 + f * 3.0, 6.0 + f * 5.0);
+        let f = ((G_DIE_TICKS - g.state_timer) >> 3).max(0);
+        let (sx, sy) = (g.px as f32 + 12.0 - 24.0 + if g.dual != 0 { 8.0 } else { 0.0 }, g.py as f32 + 7.0 - 50.0);
+        match f {
+            0 => p.star(sx, sy, 4.0),
+            1 => p.burst(sx, sy, 14, 2.0, 8.0, f),
+            2 => p.burst(sx, sy, 20, 3.0, 11.0, f),
+            3 => p.burst(sx, sy, 24, 6.0, 13.0, f),
+            4 => p.burst(sx, sy, 14, 9.0, 15.0, f),
+            5 => p.burst(sx, sy, 8, 12.0, 17.0, f),
+            _ => {}
+        }
     } else if show && !(g.state == S_PLAY && (g.invuln & 4) != 0) {
         let (sx, sy) = (g.px as f32 + 12.0 - 24.0, g.py as f32 + 7.0 - 50.0);
         p.ship(sx, sy, 1.0);

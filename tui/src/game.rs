@@ -9,6 +9,8 @@ use crate::arcade_data::*;
 pub const NAL: usize = 40;
 pub const EBN: usize = 8; // enemy bombs on the screen
 pub const TICK_HZ: u64 = 50;
+pub const G_EXPL_TICKS: i32 = 20; // an alien bursts for 20 ticks in 5 steps of 4 (psp/game.h); the fighter's burst is 6 steps of 8 ticks at the start of its 107 dead ticks
+pub const G_DIE_TICKS: i32 = 107;
 
 pub const S_TITLE: i32 = 0;
 pub const S_INTRO: i32 = 1;
@@ -366,7 +368,7 @@ fn player_hit(g: &mut Game, side: i32) {
     g.lives -= 1;
     g.state = S_DYING;
     g.dying_quiet = 0;
-    g.state_timer = 107; // the arcade waits 4 x 32 frames before the ship comes back
+    g.state_timer = G_DIE_TICKS; // the arcade waits 4 x 32 frames before the ship comes back
     g.eb = [Bullet::default(); EBN];
     g.ps = [Bullet::default(); 4];
     g.snd |= SND_HIT | SND_DEATH;
@@ -469,7 +471,7 @@ fn alien_hit(g: &mut Game, i: usize) {
         }
     }
     g.al[i].st = A_EXPLODE;
-    g.al[i].timer = 11;
+    g.al[i].timer = G_EXPL_TICKS;
     g.snd |= SND_EXPLODE;
     add_score(g, pts);
 }
@@ -998,7 +1000,7 @@ fn update_collisions(g: &mut Game) {
                         g.cap = C_NONE;
                     }
                     g.al[j].st = A_EXPLODE;
-                    g.al[j].timer = 11;
+                    g.al[j].timer = G_EXPL_TICKS;
                     g.snd |= SND_EXPLODE;
                     player_hit(g, s);
                     break;

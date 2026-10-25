@@ -103,14 +103,6 @@ impl Canvas {
             self.px[y as usize * self.w + x as usize] = c;
         }
     }
-    fn blend(&mut self, x: i32, y: i32, c: Rgb, a: u32) {
-        if x >= 0 && y >= 0 && (x as usize) < self.w && (y as usize) < self.h {
-            let p = &mut self.px[y as usize * self.w + x as usize];
-            for i in 0..3 {
-                p[i] = ((p[i] as u32 * (256 - a) + c[i] as u32 * a) >> 8) as u8;
-            }
-        }
-    }
     fn rect(&mut self, x: i32, y: i32, w: i32, h: i32, c: Rgb) {
         for yy in y..y + h {
             for xx in x..x + w {
@@ -189,6 +181,28 @@ fn scale_art(rows: &[&str; 16], v: &Variant, size: usize) -> (Vec<Option<Rgb>>, 
     (out, size, h)
 }
 
+/// A burst (single pixels, 16 x 16 letters): a pixel of the picture is lit when any source pixel in its box is, so the dots do not vanish at a small scale.
+fn scale_burst(rows: &[&str; 16], v: &Variant, size: usize) -> (Vec<Option<Rgb>>, usize, usize) {
+    let mut out = vec![None; size * size];
+    for ty in 0..size {
+        let (sy0, sy1) = (ty * 16 / size, ((ty + 1) * 16 / size).max(ty * 16 / size + 1));
+        for tx in 0..size {
+            let (sx0, sx1) = (tx * 16 / size, ((tx + 1) * 16 / size).max(tx * 16 / size + 1));
+            let mut best: Option<u8> = None;
+            for sy in sy0..sy1 {
+                for sx in sx0..sx1 {
+                    let ch = rows[sy].as_bytes()[sx];
+                    if letter_color(ch, v).is_some() && (best.is_none() || ch == b'w' || ch == b'y') {
+                        best = Some(ch);
+                    }
+                }
+            }
+            out[ty * size + tx] = best.and_then(|ch| letter_color(ch, v));
+        }
+    }
+    (out, size, size)
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Spr {
     Bee(usize),
@@ -207,8 +221,8 @@ fn art_of(s: Spr) -> (&'static [&'static str; 16], &'static Variant) {
         Spr::Boss(f) => (if f == 0 { &ART_BOSS_A } else { &ART_BOSS_B }, &V_BOSS),
         Spr::BossP(f) => (if f == 0 { &ART_BOSS_A } else { &ART_BOSS_B }, &V_BOSSP),
         Spr::Player => (&ART_PLAYER, &V_BEE),
-        Spr::Xa(f) => ([&ART_XA0, &ART_XA1, &ART_XA2][f], &V_BEE),
-        Spr::Xp(f) => ([&ART_XP0, &ART_XP1, &ART_XP2, &ART_XP3][f], &V_BEE),
+        Spr::Xa(f) => ([&ARTF_XA0, &ARTF_XA1, &ARTF_XA2, &ARTF_XA3, &ARTF_XA4][f], &V_BEE),
+        Spr::Xp(f) => ([&ARTF_XP0, &ARTF_XP1, &ARTF_XP2, &ARTF_XP3, &ARTF_XP4, &ARTF_XP5][f], &V_BEE),
     }
 }
 
@@ -229,7 +243,7 @@ impl Renderer {
         let size = ((gsize + k / 2) / k).max(4) as usize & !1; // even (rounded down): the picture is symmetric about its middle
         let (pic, w, h) = self.cache.entry((s, size)).or_insert_with(|| {
             let (rows, v) = art_of(s);
-            scale_art(rows, v, size)
+            if matches!(s, Spr::Xa(_) | Spr::Xp(_)) { scale_burst(rows, v, size) } else { scale_art(rows, v, size) }
         });
         let (w, h) = (*w, *h);
         let x0 = (cx - 24).div_euclid(k) - w as i32 / 2;
@@ -264,21 +278,24 @@ impl Renderer {
         }
     }
 
+    /// The tractor beam: a cone of thin rings (a ring every 2 canvas pixels), bowed near the boss, the ends curled up, teal -> cyan -> blue, and a bright ring that runs down it.
     fn beam(&self, cv: &mut Canvas, g: &Game) {
         let b = &g.al[g.cap_boss as usize];
         let n = if g.cap == C_BEAM { g.beam_len } else { 4 };
         let k = self.layout.k;
-        const PULSE: [Rgb; 4] = [[40, 90, 255], [100, 170, 255], [80, 230, 255], [100, 170, 255]];
-        for r in 0..n {
-            let c = PULSE[((r + (g.frame >> 2)) & 3) as usize];
-            let y0 = b.y + 14 + r * 8;
-            let (hw0, hw1) = ((2 + r) * 4 + 4, (3 + r) * 4 + 4);
-            for gy in (y0..y0 + 8).step_by(k.max(1) as usize) {
-                let hw = hw0 + (hw1 - hw0) * (gy - y0) / 8;
-                let (x0, x1) = ((b.x + 12 - hw - 24) / k, (b.x + 12 + hw - 24) / k);
-                for x in x0..=x1 {
-                    cv.blend(x, (gy - 50) / k, c, if x == x0 || x == x1 { 200 } else { 120 });
-                }
+        let rings = n * 8 / k / 2;
+        for i in 0..rings {
+            let gy = i * 2 * k; // game pixels below the top of the beam
+            let hw = ((2 * 4 + 4) + gy / 2) / k; // 12 game pixels at the top, 32 at the bottom (4 rows)
+            let lit = (i - (g.frame >> 2)).rem_euclid(4) == 0;
+            let t = (i * 100 / (4 * 8 / k / 2).max(1)).min(100);
+            let c: Rgb = if lit { [210, 255, 255] } else { [(60 + t / 5) as u8, (215 - t) as u8, 255] };
+            let y = (b.y + 14 + gy - 50) / k;
+            let cx = (b.x + 12 - 24) / k;
+            for x in (cx - hw)..=(cx + hw) {
+                let ends = (x - cx).abs() * 2 > hw; // the outer half of a ring
+                let dy = if i < 3 && ends { 1 } else { 0 } - if (x - cx).abs() == hw { 1 } else { 0 }; // the first rings bow down at the ends, every ring curls up at its ends
+                cv.set(x, y + dy, c);
             }
         }
     }
@@ -310,8 +327,8 @@ impl Renderer {
             }
             let (cx, cy) = (a.x + 12, a.y + 6);
             if a.st == A_EXPLODE {
-                let f = (2 - (a.timer >> 2)).clamp(0, 2) as usize;
-                self.sprite(cv, Spr::Xa(f), cx, cy, 30);
+                let f = ((G_EXPL_TICKS - a.timer) >> 2).clamp(0, 4) as usize;
+                self.sprite(cv, Spr::Xa(f), cx, cy, 36);
                 continue;
             }
             let s = match a.typ {
@@ -338,8 +355,10 @@ impl Renderer {
         // the ship
         let show = matches!(g.state, S_INTRO | S_PLAY | S_RESULT | S_CAPTURED);
         if g.state == S_DYING && g.dying_quiet == 0 {
-            let f = (3 - (g.state_timer >> 4)).clamp(0, 3) as usize;
-            self.sprite(cv, Spr::Xp(f), g.px + 12 + if g.dual != 0 { 8 } else { 0 }, g.py + 7, 52);
+            let f = ((G_DIE_TICKS - g.state_timer) >> 3).max(0) as usize;
+            if f < 6 {
+                self.sprite(cv, Spr::Xp(f), g.px + 12 + if g.dual != 0 { 8 } else { 0 }, g.py + 7, 56);
+            }
         } else if show && !(g.state == S_PLAY && (g.invuln & 4) != 0) {
             self.fighter(cv, g.px, g.py);
             if g.dual != 0 {

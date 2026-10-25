@@ -13,5 +13,19 @@ for m in re.finditer(r'static ArtRows (art_\w+) = \{(.*?)\};', src, re.S):
     rows = re.findall(r'"([^"]*)"', m.group(2))
     assert len(rows) == 16 and all(len(r) == 8 for r in rows), m.group(1)
     out.append('pub static %s: [&str; 16] = [%s];' % (m.group(1).upper(), ', '.join('"%s"' % r for r in rows)))
+# the bursts (art/master/xa.16.txt, xp.16.txt): full 16 x 16 pictures (not mirrored: the dots are not symmetric), in the letters of the colours above
+LETTERS = {'w': 'w', 'y': 'y', 'Y': 'Y', 'O': 'o', 'P': 'o', 'e': 'r', 'C': 'c', 'D': 'c', 'b': 'b', 'c': 'b', 's': 'g', 'S': 'g', 'K': 'k', '.': '.'}
+out.append('// the bursts: 16 rows of 16 letters (art/master/explode.py)')
+for name in ('xa', 'xp'):
+    frames, cur = [], None
+    for line in open(os.path.join(ROOT, '..', 'art', 'master', name + '.16.txt')).read().split('\n'):
+        if line.startswith('frame '):
+            cur = []
+            frames.append(cur)
+        elif cur is not None and line:
+            cur.append(''.join(LETTERS[ch] for ch in line))
+    for i, rows in enumerate(frames):
+        assert len(rows) == 16 and all(len(r) == 16 for r in rows)
+        out.append('pub static ARTF_%s%d: [&str; 16] = [%s];' % (name.upper(), i, ', '.join('"%s"' % r for r in rows)))
 open(os.path.join(ROOT, 'src', 'art.rs'), 'w').write('\n'.join(out) + '\n')
-print('src/art.rs', len(out) - 4, 'pictures')
+print('src/art.rs', len(out) - 5, 'pictures')
