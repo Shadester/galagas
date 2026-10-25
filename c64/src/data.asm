@@ -217,7 +217,7 @@ dive_dy_tbl:    !byte 0, 2, 2, 2, 2, 3, 3, 3, 3             ; dive speed, pixels
 lastrow_tbl:    !byte 13, 8, 7, 10, 10, 9, 9, 9, 9, 6, 7, 8
 
 hw_tbl:         !byte 2, 3, 4, 5                          ; beam half-width per row
-beam_clr_tbl:   !byte 6, 14, 3, 14                     ; blue / light blue / cyan shimmer
+beam_row_clr:   !byte 5, 3, 14, 6                      ; the rings of the beam by row: green, cyan, light blue, blue (a row that is lit is white)
 
 star_clr_tbl:   !byte 0, 0, 1, 15, 12, 11           ; by speed: fast = bright
 star_half_tbl:  !byte 0, 0, 1, 2, 2, 3               ; speed (frames per row) -> counter, in 2-frame units

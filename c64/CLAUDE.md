@@ -44,9 +44,10 @@ python3 tools/make_gif.py # re-record docs/gameplay.gif: title screen, then auto
 | Range | Content |
 |-------|---------|
 | `$0801` | BASIC stub, `SYS 2064` |
-| `$0810-$2fff` | code and variables (`!error` guard at `$3000`) |
-| `$3000-$33ff` | sprite art (`art.asm`), pointers `$c0..$cf` |
-| `$3400-` | `arcade_wave.asm`, `entry.asm`, `arcade.asm` (+ `arcade_data.asm`), `hiscore.asm`, `title_font.asm` |
+| `$0810-$27ff` | code and variables (`!error` guard at `RAM_CHARSET`; `sound.asm` is in the upper part to leave room for the debug flags) |
+| `$2800-$2fff` | the game's character set (`init_charset` in `charset.asm` copies the ROM set here at start-up and adds the 7 characters `$f8..$fe` of the tractor beam: thin rings; `$d018` = `$1a`, also in `leave_title`) |
+| `$3000-$34ff` | sprite art (`art.asm`), 20 blocks, pointers `$c0..$d3` (the explosions: `tools/gen_expl.py`) |
+| `$3500-` | `arcade_wave.asm`, `entry.asm`, `arcade.asm` (+ `arcade_data.asm`), `hiscore.asm`, `title_font.asm`, `charset.asm`, `sound.asm` |
 | `$5800-$7f3f` | title picture: colours `$5800`, screen matrix `$5c00`, bitmap `$6000` (`title.bin`) |
 | `$7f40-$9fff` | the flight paths (`arcade_paths.asm`, one byte a step; guard at `$a000`) |
 

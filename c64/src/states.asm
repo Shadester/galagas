@@ -119,7 +119,7 @@ leave_title:
     and #$fc
     ora #$03
     sta CIA2_PORT_A
-    lda #$14
+    lda #$1a                    ; characters at RAM_CHARSET
     sta VIC_MEMORY
     lda #27
     sta VIC_CTRL1

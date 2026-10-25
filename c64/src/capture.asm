@@ -160,7 +160,7 @@ beam_erase:
     sta beam_len
     rts
 
-; Draw (A = $66) or erase (A = $20) the cone of the beam under boss cap_boss
+; Draw (A = $66) or erase (A = $20) the cone of the beam under boss cap_boss (rings: the characters BEAM_CHR ..., see charset.asm)
 !zone beam_draw
 beam_draw:
     sta bd_chr
@@ -227,19 +227,23 @@ beam_draw:
     ldy #0
 .cell:
     lda bd_chr
+    cmp #$20
+    beq .store                  ; Erase
+    jsr beam_chr
+.store:
     sta (zp_dst),y
-    tya
-    clc
-    adc bd_r
-    sta temp
-    lda frame
+    lda frame                   ; A row that is lit is white; the lit row moves down every 4 frames
     lsr
     lsr
-    clc
-    adc temp
     and #3
-    tax
-    lda beam_clr_tbl,x
+    cmp bd_r
+    bne .base
+    lda #1
+    bne .setc
+.base:
+    ldx bd_r
+    lda beam_row_clr,x
+.setc:
     sta (zp_col),y
     iny
     cpy bd_n

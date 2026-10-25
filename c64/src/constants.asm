@@ -17,6 +17,7 @@ COLOR_RAM       = $d800
 VIC_CTRL1       = $d011
 VIC_CTRL2       = $d016
 VIC_MEMORY      = $d018
+RAM_CHARSET     = $2800        ; the game's character set (init_charset: the ROM set with the characters of the tractor beam); 2 KB, at a multiple of 2 KB in VIC bank 0
 CIA2_PORT_A     = $dd00        ; Bits 0-1: VIC bank (inverted)
 
 ; CIA Registers
@@ -83,8 +84,8 @@ SPR_EBUL        = $c2
 SPR_BEE         = $c3           ; +1 = second animation frame
 SPR_BFLY        = $c5
 SPR_BOSS        = $c7
-SPR_EXPL1       = $c9           ; three explosion frames
-SPR_PEXP        = $cc           ; four player explosion frames
+SPR_EXPL1       = $c9           ; five explosion frames of an alien (tools/gen_expl.py)
+SPR_PEXP        = $ce           ; six explosion frames of the fighter
 
 ; Game states
 GS_TITLE        = 0

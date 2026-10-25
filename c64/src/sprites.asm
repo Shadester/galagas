@@ -96,9 +96,9 @@ set_explode:
 .state:
     lda #4
     sta enemy_state,x
-    lda #11
+    lda #20                     ; the burst lasts 20 ticks in 5 steps of 4 (psp/game.h G_EXPL_TICKS)
     sta enemy_timer,x
-    lda #8                      ; Orange
+    lda #10                     ; Light red (the first step is a pink star)
     sta spr_c,x
     lda #SPR_EXPL1
     sta spr_f,x
@@ -160,17 +160,22 @@ update_sprite_data:
 .p_dying:
     lda dying_quiet
     bne .p_hide                 ; Captured: no explosion
-    lda dying_timer
-    lsr
-    lsr
-    lsr
-    lsr
-    lsr
-    sta temp                    ; 3..0: four explosion frames of 32 game frames
-    lda #SPR_PEXP+3
+    lda #106                    ; the burst is 6 steps of 8 ticks (dying_timer starts at 106), then the ship is gone until it comes back
     sec
-    sbc temp
+    sbc dying_timer
+    lsr
+    lsr
+    lsr
+    cmp #6
+    bcs .p_hide
+    sta temp
+    clc
+    adc #SPR_PEXP
     ldx #1                      ; White
+    ldy temp
+    cpy #5
+    bne .p_add
+    ldx #15                     ; Light grey: the last step is a few dim dots
 .p_add:
     sta spr_f+VS_PLAYER
     stx spr_c+VS_PLAYER

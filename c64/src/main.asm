@@ -34,6 +34,7 @@
 
 !zone init
 init:
+    jsr init_charset            ; The ROM characters and the beam's, in RAM
     jsr setup_colors
     jsr clear_screen
     jsr load_hiscore            ; Needs the KERNAL interrupt, so before init_raster
@@ -143,22 +144,26 @@ run_state:
 !src "src/capture.asm"
 !src "src/challenge.asm"
 !src "src/progress.asm"
-!src "src/sound.asm"
 !src "src/multiplexer.asm"
 !src "src/data.asm"
 
+!if * > RAM_CHARSET {
+    !error "Code and data have grown into the character set at $2800"
+}
 !if * > $3000 {
     !error "Code and data have grown into the sprite area at $3000"
 }
-* = $3000                     ; Sprite art: 16 blocks, pointers $c0..$cf
+* = $3000                     ; Sprite art: 20 blocks, pointers $c0..$d3
 !src "src/art.asm"
 
-* = $3400                     ; Free memory up to $9fff for more code
+* = $3500                     ; Free memory up to $9fff for more code
 !src "src/arcade_wave.asm"
 !src "src/entry.asm"
 !src "src/arcade.asm"
 !src "src/hiscore.asm"
 !src "src/title_font.asm"
+!src "src/charset.asm"
+!src "src/sound.asm"             ; (here, so that the first 10 KB leave room for the character set at $2800)
 
 !if * > TITLE_COLORS {
     !error "Code and data have grown into the title picture at $5800"

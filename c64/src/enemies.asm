@@ -101,15 +101,19 @@ update_enemies:
 step_explosion:
     dec enemy_timer,x
     beq .gone
-    lda enemy_timer,x
-    lsr
-    lsr
-    sta temp
-    lda #SPR_EXPL1+2
+    lda #20                     ; G_EXPL_TICKS
     sec
-    sbc temp
+    sbc enemy_timer,x
+    lsr
+    lsr                         ; 0..4: the step of the burst
+    tay
+    clc
+    adc #SPR_EXPL1
     sta spr_f,x                 ; Explosion frame
+    lda expl_colour,y
+    sta spr_c,x
     rts
+expl_colour: !byte 10, 8, 1, 1, 15   ; the colour of each step (10 light red, 8 orange, 1 white, 15 light grey); yellow and cyan are the sprites' own
 .gone:
     lda #0
     sta enemy_state,x
