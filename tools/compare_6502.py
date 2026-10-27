@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Compare a 6502 game (Lynx, C64) with the C reference psp/game.c at checkpoints.
+"""Compare a 6502 game (Lynx, C64, NES) with the C reference psp/game.c at checkpoints.
 
-    python3 tools/compare_6502.py lynx|c64 SCENARIO [SCENARIO ...]      ('list' prints the scenarios)
+    python3 tools/compare_6502.py lynx|c64|nes SCENARIO [SCENARIO ...]      ('list' prints the scenarios)
 
 The same scripted game (the AUTOPLAY input of the 6502 game, copied into a small C driver) runs in the C reference and in the ROM.
 The ROM runs in Gearlynx (headless, lynx/tools/gearlynx.py); at each checkpoint (a game tick) the state is read from memory by label
@@ -11,7 +11,8 @@ games must stay equal.
 The C64 runs in VICE (x64sc, the binary monitor, c64/tools/vice.py): the program stops at the label `tick_mark` after each pass of its game loop
 and the state is read at the checkpoints; the C reference is psp/game.c built with -DRULES_ARCADE32 (32 aliens, 4 bombs).
 PORTRAIT=1 (Lynx only) builds the portrait ROM (-D PORTRAIT=1) and the C reference with -DRULES_PORTRAIT.
-Needs the Lynx boot ROM (see lynx/CLAUDE.md), cc65 and Gearlynx; or acme and VICE."""
+The NES game (nes/) has the portrait rules (the C reference with -DRULES_PORTRAIT, the scenarios of the Lynx) and runs in cynes (pip install cynes, headless).
+Needs the Lynx boot ROM (see lynx/CLAUDE.md), cc65 and Gearlynx; or acme and VICE; or cc65 and cynes."""
 import json
 import os
 import re
@@ -179,6 +180,56 @@ class Lynx:
                     bombs=self.bombs())
 
 
+class NES(Lynx):
+    """Runs an NES ROM in cynes and reads its state by label (the -g label file of ld65 has every label)."""
+
+    def __init__(self, rom, lbl):
+        import cynes
+        self.nes = cynes.NES(rom)
+        txt = open(lbl).read()
+        self.lbl = {m.group(2): int(m.group(1), 16) for m in re.finditer(r'al ([0-9A-F]+) \.(\w+)\n', txt)}
+
+    def read(self, name, n=1):
+        a = self.lbl[name]
+        return [self.nes[a + i] for i in range(n)]
+
+    def step(self, n):
+        self.nes.step(n)
+
+
+def nes_build(build, rom_flags):
+    subprocess.run(['rm', '-rf', os.path.join(ROOT, 'nes', build)])
+    flags = ' '.join(f'-D {f}' for f in rom_flags if f != 'PORTRAIT=1')
+    subprocess.run(['make', '-C', os.path.join(ROOT, 'nes'), f'BUILD={build}', 'CAFLAGS=' + flags],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    return NES(os.path.join(ROOT, 'nes', build, 'galaga.nes'), os.path.join(ROOT, 'nes', build, 'galaga.lbl'))
+
+
+def nes_state_at(name, rom_flags, tick, start):
+    """Build the ROM with -DHALT: the game stops after `tick` ticks (5 in 6 frames on the NTSC NES of cynes), so the state is exact."""
+    ns = nes_build(os.path.join('build', 'trace_%s_%d' % (name, tick)), rom_flags + [f'HALT={tick + 1}'])
+    ns.step(30 + tick)
+    for _ in range(tick):                        # until it stops (a tick may take longer than a frame)
+        if ns.read('halted')[0] == 1:
+            break
+        ns.step(10)
+    st = ns.state(NAL)
+    st['t8'] = ns.read('frame')[0]
+    return st
+
+
+def nes_start_tick(rom_flags):
+    """The tick at which the NES game leaves the title screen (halt_cnt counts the ticks)."""
+    ns = nes_build(os.path.join('build', 'trace_start'), [f for f in rom_flags if f.split('=')[0] in ('AUTOPLAY', 'NOFIRE')] + ['HALT=65535'])
+    ns.step(10)                                  # (the battery RAM holds anything before the start code has set it)
+    for _ in range(3000):
+        ns.step(1)
+        if ns.read('game_state')[0] != 0:          # (the screen change takes a few frames, and the ticks catch up: the intro has counted down)
+            lo, hi = ns.read('halt_cnt', 2)
+            return lo + 256 * hi - (120 - ns.read('intro_timer')[0])
+    raise RuntimeError('the NES game does not leave the title screen')
+
+
 def lynx_state_at(name, rom_flags, tick, start):
     """Build the ROM with -DHALT: the game stops after `tick` ticks at the start of the next one, so the state is exact."""
     build = os.path.join('build', 'trace_%s_%d' % (name, tick))
@@ -326,15 +377,18 @@ def compare(platform, name):
         c_flags = ['-DRULES_ARCADE32'] + c_flags
     else:
         rom_flags, c_flags, ticks, what = SCENARIOS[name]
-        if PORTRAIT:                                     # PORTRAIT=1: the portrait ROM against psp/game.c -DRULES_PORTRAIT
+        if PORTRAIT or platform == 'nes':                # PORTRAIT=1: the portrait ROM against psp/game.c -DRULES_PORTRAIT (the NES has only these rules)
             rom_flags, c_flags = rom_flags + ['PORTRAIT=1'], c_flags + ['-DRULES_PORTRAIT']
         if os.environ.get('TICKS'):
             ticks = [int(t) for t in os.environ['TICKS'].split(',')]
-        start = start_tick(rom_flags)
+        start = nes_start_tick(rom_flags) if platform == 'nes' else start_tick(rom_flags)
     ref = c_trace(c_flags, max(ticks) + 5, 'NOFIRE=1' in rom_flags, start, nb)
     if platform == 'lynx':
         with ThreadPoolExecutor(4) as ex:
             roms = list(ex.map(lambda n: lynx_state_at(name, rom_flags, n, start), ticks))
+    elif platform == 'nes':
+        with ThreadPoolExecutor(4) as ex:
+            roms = list(ex.map(lambda n: nes_state_at(name, rom_flags, n, start), ticks))
     bad = 0
     for n, a in zip(ticks, roms):
         c = ref[n]
@@ -372,10 +426,10 @@ def compare(platform, name):
 
 
 def main():
-    if len(sys.argv) < 3 or sys.argv[1] not in ('lynx', 'c64'):
+    if len(sys.argv) < 3 or sys.argv[1] not in ('lynx', 'c64', 'nes'):
         sys.exit(__doc__)
     platform, names = sys.argv[1], sys.argv[2:]
-    table = SCENARIOS if platform == 'lynx' else SCENARIOS_C64
+    table = SCENARIOS_C64 if platform == 'c64' else SCENARIOS
     if names == ['list']:
         for k, v in table.items():
             print(k, '-', v[3])

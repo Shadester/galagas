@@ -1,0 +1,198 @@
+; Wing-flap frames and the game -> multiplexer sprite copy
+
+; Point every enemy's sprite at the current wing-flap frame
+
+refresh_anim:
+    ldx #MAX_ENEMIES-1
+@loop:
+    lda enemy_state,x
+    cmp #4
+    beq @next                   ; Exploding: keeps its explosion frame
+    lda enemy_ptr,x
+    clc
+    adc anim
+    sta spr_f,x
+@next:
+    dex
+    bpl @loop
+    rts
+
+; Enemy X turns into an explosion (state 4). Preserves X.
+
+set_explode:
+    lda #4
+    sta enemy_state,x
+    lda #20                     ; the burst lasts 20 ticks in 5 steps of 4 (psp/game.h G_EXPL_TICKS)
+    sta enemy_timer,x
+    lda #SPR_EXPL1
+    sta spr_f,x
+    rts
+
+; ===============================================
+; UPDATE SPRITE DATA FOR MULTIPLEXER
+; ===============================================
+; Copies game state to virtual sprite tables
+
+
+update_sprite_data:
+    jsr arc_sync_aliens
+    lda game_state
+    beq @hide_all               ; Title: no sprites
+    cmp #GS_GAMEOVER
+    bne @player
+@hide_all:
+    ldx #MAX_SPRITES-1
+    lda #$ff
+@hide:
+    sta spr_y,x
+    dex
+    bpl @hide
+    jmp @done
+
+; Every sprite has a fixed virtual slot: enemy i is slot i and shares its
+; x / y (and msb, pointer, colour) with the multiplexer tables, so only the
+; other sprites are copied here. Hidden sprites have Y=$ff. Stable slots keep
+; last frame's sort order nearly correct, which makes the sort cheap.
+@player:
+    cmp #GS_DYING
+    beq @p_dying
+    cmp #GS_READY
+    beq @p_hide                 ; Waiting to respawn
+    lda invuln
+    and #4
+    bne @p_hide                 ; Blink while invulnerable
+    lda #SPR_PLAYER
+    ldx #1                      ; White
+    jmp @p_add
+@p_dying:
+    lda dying_quiet
+    bne @p_hide                 ; Captured: no explosion
+    lda #106                    ; the burst is 6 steps of 8 ticks (dying_timer starts at 106), then the ship is gone until it comes back
+    sec
+    sbc dying_timer
+    lsr
+    lsr
+    lsr
+    cmp #6
+    bcs @p_hide
+    clc
+    adc #SPR_PEXP
+    ldx #1                      ; White
+@p_add:
+    sta spr_f+VS_PLAYER
+    lda player_x
+    sta spr_x+VS_PLAYER
+    lda player_x_msb
+    sta spr_x_msb+VS_PLAYER
+    lda player_y
+    sta spr_y+VS_PLAYER
+    jmp @dual
+@p_hide:
+    lda #$ff
+    sta spr_y+VS_PLAYER
+
+    ; Second ship of the dual fighter
+@dual:
+    lda dual
+    beq @d_hide
+    lda invuln
+    and #4
+    bne @d_hide
+    lda #SPR_PLAYER
+    sta spr_f+VS_DUAL
+    lda player_x
+    clc
+    adc #DUAL_DX
+    sta spr_x+VS_DUAL
+    lda player_x_msb
+    adc #0
+    sta spr_x_msb+VS_DUAL
+    lda player_y
+    sta spr_y+VS_DUAL
+    jmp @dual_done
+@d_hide:
+    lda #$ff
+    sta spr_y+VS_DUAL
+@dual_done:
+
+    ; Captured ship: carried by its boss, or falling back to the player
+    lda cap_state
+    cmp #4
+    bne @c_resc
+    ldx cap_boss
+    lda enemy_state,x
+    beq @c_hide
+    lda enemy_y,x
+    cmp #CAPT_DY+16
+    bcc @c_hide
+    sec
+    sbc #CAPT_DY
+    sta spr_y+VS_CAPT
+    lda enemy_x,x
+    sta spr_x+VS_CAPT
+    ldy #1                      ; White
+    lda enemy_x_msb,x
+    jmp @c_set
+@c_resc:
+    cmp #5
+    bne @c_hide
+    lda cap_y
+    sta spr_y+VS_CAPT
+    lda cap_x
+    sta spr_x+VS_CAPT
+    ldy #1                      ; White
+    lda cap_msb
+@c_set:
+    sta spr_x_msb+VS_CAPT
+    lda #SPR_PLAYER
+    sta spr_f+VS_CAPT
+    jmp @c_done
+@c_hide:
+    lda #$ff
+    sta spr_y+VS_CAPT
+@c_done:
+
+    ; Player bullets
+    ldx #3
+@pb_loop:
+    lda pbul_active,x
+    bne @pb_on
+    lda #$ff
+    sta spr_y+VS_PBUL,x
+    jmp @pb_next
+@pb_on:
+    lda pbul_x,x
+    sta spr_x+VS_PBUL,x
+    lda pbul_msb,x
+    sta spr_x_msb+VS_PBUL,x
+    lda pbul_y,x
+    sta spr_y+VS_PBUL,x
+    lda #SPR_PBUL
+    sta spr_f+VS_PBUL,x
+@pb_next:
+    dex
+    bpl @pb_loop
+
+    ; Enemy bullets
+    ldx #EBN-1
+@eb_loop:
+    lda eb_active,x
+    bne @eb_on
+    lda #$ff
+    sta spr_y+VS_EBUL,x
+    jmp @eb_next
+@eb_on:
+    lda eb_x,x
+    sta spr_x+VS_EBUL,x
+    lda eb_msb,x
+    sta spr_x_msb+VS_EBUL,x
+    lda eb_y,x
+    sta spr_y+VS_EBUL,x
+    lda #SPR_EBUL
+    sta spr_f+VS_EBUL,x
+@eb_next:
+    dex
+    bpl @eb_loop
+
+@done:
+    rts
