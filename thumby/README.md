@@ -8,7 +8,7 @@ The rules are the rules of the PSP game (`../psp/game.c`, which follows the C64 
 
 ## Status
 
-It runs on a Thumby Color and in the desktop version of the engine (macOS). The screenshot tests run in the desktop engine, and they pass.
+It runs on a Thumby Color and in the desktop version of the engine (macOS and Linux). The screenshot tests run in the desktop engine, and they pass.
 
 ## Features
 
@@ -31,7 +31,7 @@ What is different:
 
 ## Build and run
 
-On macOS, `tools/setup-macos.sh` builds the desktop engine (TinyCircuits' MicroPython fork with the engine, and SDL2). It needs Homebrew and takes a few minutes. The engine is made for Linux. The script adds three flags for macOS (`-D__unix__=1`, the SDL paths, `-Wno-error`).
+On Linux (Arch and derivatives), `tools/setup-linux.sh` builds the same engine without the macOS flags. On macOS, `tools/setup-macos.sh` builds the desktop engine (TinyCircuits' MicroPython fork with the engine, and SDL2). It needs Homebrew and takes a few minutes. The engine is made for Linux. The script adds three flags for macOS (`-D__unix__=1`, the SDL paths, `-Wno-error`).
 
 ```sh
 tools/setup-macos.sh     # once: builds build/mp-thumby/ports/unix/build-standard/micropython
@@ -47,7 +47,7 @@ The game follows the rules of the arcade Galaga that are described in `../ARCADE
 
 ### On the Thumby Color
 
-Connect the device with USB and run `tools/install.sh` (it installs `mpremote` with Homebrew if it is missing). The game goes to `/Games/Galaga`. You can also copy the `Galaga` folder with the [Code Editor](https://color.thumby.us/code/) or Thonny. Then choose Galaga in the launcher.
+Connect the device with USB and run `tools/install.sh` (it installs `mpremote` with Homebrew, or pipx on Linux, if it is missing). The game goes to `/Games/Galaga`. You can also copy the `Galaga` folder with the [Code Editor](https://color.thumby.us/code/) or Thonny. Then choose Galaga in the launcher.
 
 ## Source layout
 

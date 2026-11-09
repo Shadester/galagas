@@ -63,7 +63,7 @@ The VIC-II cannot draw more than 8 sprites in one band of 21 lines. During the f
 
 ## Build and run
 
-On macOS, `tools/setup-macos.sh` installs everything via Homebrew.
+On macOS, `tools/setup-macos.sh` installs everything via Homebrew; on Arch Linux and derivatives, `tools/setup-linux.sh`.
 Requires [ACME](https://sourceforge.net/projects/acme-crossass/), the [VICE](https://vice-emu.sourceforge.io/) emulator (`x64sc`, `c1541`) and [Exomizer](https://bitbucket.org/magli143/exomizer/) (compresses the PRG). `make test` also uses Python with Pillow.
 
 ```sh
@@ -97,7 +97,7 @@ A joystick in port 2 works as well. In VICE, use a keyset mapped to joystick por
 | `tools/gen_title.py` | Makes `src/title.bin` and `src/title_font.asm`: the title picture. The GALAGA logo comes from `assets/title-source.png`. The aliens and the ship come from `src/art.asm` |
 | `tools/run.sh` | Builds and runs the game in a VICE window (A / D / Space through `.vice/vicerc`) |
 | `tools/make_gif.py` | Records `docs/gameplay.gif`: the title screen, then the autoplay build |
-| `tools/setup-macos.sh` | Installs the build tools with Homebrew |
+| `tools/setup-macos.sh`, `tools/setup-linux.sh` | Install the build tools (Homebrew; pacman and the AUR) |
 
 The generated files are in the repository. You only run the generators when you change a path, the arcade tables or the title picture.
 

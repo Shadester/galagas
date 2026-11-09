@@ -1,13 +1,13 @@
 #!/bin/sh
-# Build the ADF (if the sources changed) and run it in FS-UAE (brew install --cask fs-uae-emulator): a window, an Amiga 500, the
+# Build the ADF (if the sources changed) and run it in FS-UAE (macOS: brew install --cask fs-uae-emulator; Arch: pacman -S fs-uae): a window, an Amiga 500, the
 # Kickstart replacement AROS that is inside FS-UAE (no copyrighted ROM). Close the window to stop.
 #   KICKSTART=/path/to/rom   use a Kickstart ROM instead of AROS      EMULATOR=/path/to/fs-uae   another binary
 #   MODEL=A1200              an Amiga 1200 (AGA, 68020; it needs a 3.x Kickstart ROM: KICKSTART=...); the game detects the chip set and the processor itself
 cd "$(dirname "$0")/.." || exit 1
 make >/dev/null || exit 1
-EMU=${EMULATOR:-/Applications/FS-UAE.app/Contents/MacOS/fs-uae}
-if [ ! -x "$EMU" ]; then
-    echo "$EMU not found. Install it with: brew install --cask fs-uae-emulator" >&2
+if [ -z "$EMULATOR" ] && [ -x /Applications/FS-UAE.app/Contents/MacOS/fs-uae ]; then EMU=/Applications/FS-UAE.app/Contents/MacOS/fs-uae; else EMU=${EMULATOR:-fs-uae}; fi
+if ! command -v "$EMU" >/dev/null; then
+    echo "$EMU not found. Install it with: brew install --cask fs-uae-emulator (macOS) or pacman -S fs-uae (Arch)" >&2
     echo "Or play in the browser: https://vamigaweb.github.io/#AROS=true#https://raw.githubusercontent.com/Shadester/galagas/master/amiga/docs/galaga.adz" >&2
     exit 1
 fi

@@ -12,7 +12,8 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-EXE = '/Applications/Gearlynx.app/Contents/MacOS/gearlynx'
+_MAC = '/Applications/Gearlynx.app/Contents/MacOS/gearlynx'
+EXE = os.environ.get('GEARLYNX') or (_MAC if os.path.exists(_MAC) else 'gearlynx')
 BIOS = os.environ.get('LYNX_BIOS', os.path.join(HERE, '..', 'lynxboot.img'))
 
 

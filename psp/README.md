@@ -11,7 +11,7 @@ a glow and particle renderer and a synthesised sound track.
 
 ### Requirements
 
-`tools/setup-macos.sh` installs all of these on macOS (Homebrew needed).
+`tools/setup-macos.sh` installs all of these on macOS (Homebrew needed); `tools/setup-linux.sh` on Arch Linux and derivatives (`psp-sdk-bin` from the AUR, PPSSPP; log in again or `source /etc/profile.d/pspdev.sh` afterwards).
 
 - [PSPSDK](https://pspdev.github.io/) with its `bin` directory on `PATH`
 - `make`
@@ -25,7 +25,7 @@ make test                              # host rule tests (scoring, capture, chal
 
 ## Run
 
-On macOS: `tools/run.sh` (builds, then starts PPSSPP; `PPSSPP=...` overrides the binary). On a PSP, copy `EBOOT.PBP` to `PSP/GAME/PSPGALAGA/`.
+On macOS and Linux: `tools/run.sh` (builds, then starts PPSSPP; `PPSSPP=...` overrides the binary). On a PSP, copy `EBOOT.PBP` to `PSP/GAME/PSPGALAGA/`.
 
 ## Controls
 

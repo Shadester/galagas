@@ -1,4 +1,4 @@
-# Amiga Galaga: m68k-elf-gcc (Homebrew: m68k-elf-gcc m68k-elf-binutils) -> raw image -> ADF
+# Amiga Galaga: m68k-elf-gcc (Homebrew: m68k-elf-gcc m68k-elf-binutils; Arch: the AUR, tools/setup-linux.sh) -> raw image -> ADF
 CC = m68k-elf-gcc
 EXTRA_CFLAGS =
 EXTRA_ASFLAGS =

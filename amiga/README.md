@@ -59,7 +59,7 @@ What is different:
 
 ## Build and run
 
-`tools/setup-macos.sh` installs everything with Homebrew: `m68k-elf-gcc`, `m68k-elf-binutils`, FS-UAE and Pillow. The tests also need a C compiler (`cc`).
+`tools/setup-linux.sh` installs everything on Arch Linux and derivatives (the cross compiler is a chain of four AUR packages, and FS-UAE needs xdotool and ImageMagick for the window pictures of `tests/fsuae.py`). `tools/setup-macos.sh` installs everything with Homebrew: `m68k-elf-gcc`, `m68k-elf-binutils`, FS-UAE and Pillow. The tests also need a C compiler (`cc`).
 
 ```sh
 make                 # build/galaga.adf: a 880 KB floppy disk image
@@ -71,7 +71,7 @@ python3 tools/gen_assets.py [preview.png]   # src/assets.h: sprites, title pictu
 python3 tools/make_gif.py                   # record docs/gameplay.gif (about 2 minutes)
 ```
 
-To play it, run `tools/run.sh`: it starts the `.adf` in FS-UAE (`brew install --cask fs-uae-emulator`) in a window, with the AROS replacement ROM that is inside FS-UAE. (`KICKSTART=file` uses a Kickstart ROM instead. vAmiga cannot take a disk from the command line.) On a real Amiga, write the ADF to a floppy disk.
+To play it, run `tools/run.sh`: it starts the `.adf` in FS-UAE (`brew install --cask fs-uae-emulator` on macOS, `pacman -S fs-uae` on Arch) in a window, with the AROS replacement ROM that is inside FS-UAE. (`KICKSTART=file` uses a Kickstart ROM instead. vAmiga cannot take a disk from the command line.) On a real Amiga, write the ADF to a floppy disk.
 
 The tests run the game in vAmigaWeb in a headless browser. Install it once: `pip install playwright pillow && playwright install chromium`.
 The tests of the Amiga 1200 run FS-UAE (`tests/fsuae.py`; the Kickstart ROM is your own, in `~/Documents/FS-UAE/Kickstarts`) and take a picture of its window only: macOS asks once for the permission Screen Recording. `pip install pyobjc-framework-Quartz`.
@@ -101,5 +101,5 @@ Debug flags (`make EXTRA_CFLAGS="-DAUTOPLAY -DHALT=900"`): `AUTOPLAY` (the game 
 | `src/assets.h` | Generated: sprites, title picture, font, sound |
 | `src/libc.c`, `src/inc/` | The few C library functions `psp/game.c` needs |
 | `src/selftest.h` | The scripted game and its hash (the Mac and the 68000 both run it) |
-| `tools/` | `setup-macos.sh`, `run.sh` (build and run in FS-UAE), `art.py` (palette and pixel art), `gen_assets.py`, `make_adf.py` (checksum of the boot block, the disk image), `make_gif.py` |
+| `tools/` | `setup-macos.sh`, `setup-linux.sh`, `run.sh` (build and run in FS-UAE), `art.py` (palette and pixel art), `gen_assets.py`, `make_adf.py` (checksum of the boot block, the disk image), `make_gif.py` |
 | `tests/` | `test_selftest.py` (+ `selftest_native.c`), `shots.py` + `ref/`, `vamiga.py` (runs an ADF in vAmigaWeb) |

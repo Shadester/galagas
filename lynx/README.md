@@ -28,7 +28,7 @@ What is different:
 
 ## Build and run
 
-On macOS, `tools/setup-macos.sh` installs the tools with Homebrew: cc65 and the [Gearlynx](https://github.com/drhelius/Gearlynx) emulator. Python with Pillow is for the generators and the tests.
+On macOS, `tools/setup-macos.sh` installs the tools with Homebrew: cc65 and the [Gearlynx](https://github.com/drhelius/Gearlynx) emulator. On Arch Linux and derivatives, `tools/setup-linux.sh` does the same (cc65 and Gearlynx from the AUR). Python with Pillow is for the generators and the tests.
 
 The emulator needs the Lynx boot ROM. It is copyrighted: you must dump it from your own Lynx. Put it in `lynx/lynxboot.img` (512 bytes, md5 `fcd403db69f54290b51035d82f835e7b`). Git ignores this file.
 
@@ -65,7 +65,7 @@ The web page is `../docs/lynx/index.html`, and the ROM there (`../docs/lynx/gala
 | `tools/gearlynx.py` | Runs a ROM in headless Gearlynx (its MCP server): steps frames, presses buttons, takes screenshots |
 | `tools/dbg.py` | Prints the program counter and the values of labels after N frames |
 | `tools/make_gif.py` | Records `docs/gameplay.gif` |
-| `tools/run.sh`, `tools/run_portrait.sh`, `tools/setup-macos.sh` | Start the game in Gearlynx; install the tools |
+| `tools/run.sh`, `tools/run_portrait.sh`, `tools/setup-macos.sh`, `tools/setup-linux.sh` | Start the game in Gearlynx; install the tools |
 
 The generated files are in the repository. You only run the generators when you change the art or the title picture.
 

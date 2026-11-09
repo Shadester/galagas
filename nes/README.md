@@ -56,7 +56,7 @@ The NES has no decimal mode (the 2A03 is a 6502 without it), so the BCD score us
 
 ## Build and run
 
-Install cc65 (`apt install cc65`, or `brew install cc65`). Python with Pillow is for the generators; cynes (`pip install cynes`) is for the tests, and py65 (`pip install py65`) for `tools/prof.py`.
+Install cc65 (`apt install cc65`, or `brew install cc65`; on Arch Linux and derivatives `tools/setup-linux.sh` installs cc65 from the AUR and makes the venv `../.venv` with cynes and py65: run the tests with `../.venv/bin/python`). Python with Pillow is for the generators; cynes (`pip install cynes`) is for the tests, and py65 (`pip install py65`) for `tools/prof.py`.
 
 ```sh
 make                        # build/galaga.nes
