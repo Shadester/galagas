@@ -15,13 +15,14 @@
 </head>
 <body>
 <div id="wrap"><canvas id="c"></canvas></div>
-<div id="foot">Galaga for the terminal: Rust, compiled to WebAssembly, drawn as terminal cells. The window size sets the picture size (80 x 27 cells at the least).
+<div id="foot">Galaga for the terminal: Rust, compiled to WebAssembly, drawn as terminal cells. The window size sets the picture size (51 x 35 cells at the least; 80 x 27 with <a href="?landscape">?landscape</a>).
 Arrow keys or A / D move, Space fires, P pauses. <a href="https://github.com/Shadester/galagas/tree/master/tui">Source</a> · <a href="../">All versions</a></div>
 <script>
 (async () => {
   let CW = 8, CH = 16;                                     // a cell in CSS pixels (set by measure)
   const K_LEFT = 1, K_RIGHT = 2, K_FIRE = 4, K_PAUSE = 8, K_QUIT = 16;
-  const q = new URLSearchParams(location.search);          // ?autoplay  ?god  ?stage=3
+  const q = new URLSearchParams(location.search);          // ?autoplay  ?god  ?stage=3  ?landscape (the C64's field; the default is the arcade's portrait field)
+  const portrait = !q.has('landscape');
   const wrap = document.getElementById('wrap'), cv = document.getElementById('c'), g = cv.getContext('2d');
   let x;
   try {
@@ -35,11 +36,12 @@ Arrow keys or A / D move, Space fires, P pauses. <a href="https://github.com/Sha
   const saveHi = () => { try { localStorage.setItem('galaga-tui-hi', String(x.web_hi())); } catch (e) {} };
 
   let cols = 0, rows = 0, dpr = 1, prev = null;
-  function measure() {                                     // the biggest cells that still give the biggest picture (160 x 52 cells), else 8 x 16
+  const BIG = portrait ? [102, 67] : [160, 52];            // the cells of the biggest picture (the scale 2: 2 game pixels for a canvas pixel)
+  function measure() {                                     // the biggest cells that still give the biggest picture, else 8 x 16
     dpr = window.devicePixelRatio || 1;
     CW = 8; CH = 16;
     for (let s = 12; s >= 5; s--) {
-      if (Math.floor(wrap.clientWidth / s) >= 160 && Math.floor(wrap.clientHeight / (2 * s)) >= 52) { CW = s; CH = 2 * s; break; }
+      if (Math.floor(wrap.clientWidth / s) >= BIG[0] && Math.floor(wrap.clientHeight / (2 * s)) >= BIG[1]) { CW = s; CH = 2 * s; break; }
     }
     cols = Math.max(1, Math.floor(wrap.clientWidth / CW));
     rows = Math.max(1, Math.floor(wrap.clientHeight / CH));
@@ -53,7 +55,7 @@ Arrow keys or A / D move, Space fires, P pauses. <a href="https://github.com/Sha
     prev = null;                                           // draw everything again
   }
   measure();
-  x.web_init(hi, parseInt(q.get('stage'), 10) || 0, q.has('god') ? 1 : 0, q.has('autoplay') ? 1 : 0, cols, rows);
+  x.web_init(hi, parseInt(q.get('stage'), 10) || 0, q.has('god') ? 1 : 0, q.has('autoplay') ? 1 : 0, cols, rows, portrait ? 1 : 0);
   window.addEventListener('resize', () => { measure(); x.web_resize(cols, rows); });
 
   const hex = (b, o) => 'rgb(' + b[o] + ',' + b[o + 1] + ',' + b[o + 2] + ')';

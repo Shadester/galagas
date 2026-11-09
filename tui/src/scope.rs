@@ -1,9 +1,10 @@
 //! The oscilloscope picture: the state of the game as line segments, for the X/Y mode of a scope (left channel = X, right channel = Y).
 //! A scope draws one colour and no filled shapes, so every object is a few strokes: our own line drawings with the silhouettes of the sprites.
-//! The segments are in a square box 0..4095 (y up). The play area (320 x 200 game pixels) keeps its shape and sits in the middle of the box,
-//! the numbers of the HUD are above it. A frame must stay under `BUDGET` segments: the beam of a scope needs time for every line, so more lines
+//! The segments are in a square box 0..4095 (y up). The play area (the landscape field 320 x 200 game pixels, or the portrait field 204 x 260) keeps
+//! its shape and sits in the middle of the box, the numbers of the HUD are above it. A frame must stay under `BUDGET` segments: the beam of a scope needs time for every line, so more lines
 //! make a slower refresh (flicker). Everything else stays the same as in `render.rs`: same object positions, same states.
 use crate::game::*;
+use crate::render::Field;
 
 /// One line: x0, y0, x1, y1.
 pub type Seg = [i16; 4];
@@ -12,25 +13,42 @@ pub type Seg = [i16; 4];
 pub const BUDGET: usize = 480;
 
 const BOX: f32 = 4095.0;
-const SCALE: f32 = BOX / 320.0; // box units for one game pixel
 const HUD: f32 = 26.0; // game pixels above the play area (the numbers)
 
 struct Pen<'a> {
     out: &'a mut Vec<Seg>,
     ids: &'a mut Vec<u16>, // the drawing (object) of each segment: a new number for every alien, shot, digit ...
     obj: u16,
+    f: Field,
+    oc: (f32, f32), // the centre of the object that is drawn, and its scale: the drawings are made for the 24 pixel sprites of the landscape field
+    ou: f32,
 }
 
 impl Pen<'_> {
     fn next(&mut self) {
         self.obj += 1;
+        self.ou = 1.0;
     }
 
-    /// A line in game pixels of the play area (0,0 = top left, 320 x 200); the HUD is at y < 0.
+    /// The next drawing is an object (a sprite) around (cx, cy): its strokes are scaled to the sprite size of the field.
+    fn object(&mut self, cx: f32, cy: f32) {
+        self.next();
+        self.oc = (cx, cy);
+        self.ou = self.f.sprite as f32 / 24.0;
+    }
+
+    /// Box units for one game pixel: the play area and the HUD above it fit the square box.
+    fn scale(&self) -> f32 {
+        BOX / (self.f.w as f32).max(self.f.h as f32 + HUD)
+    }
+
+    /// A line in game pixels of the play area (0,0 = top left); the HUD is at y < 0.
     fn line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32) {
+        let (w, h, sc, oc, ou) = (self.f.w as f32, self.f.h as f32, self.scale(), self.oc, self.ou);
         let m = |x: f32, y: f32| {
-            let bx = x * SCALE;
-            let by = BOX - ((y + HUD) * SCALE + (BOX - (200.0 + HUD) * SCALE) / 2.0);
+            let (x, y) = (oc.0 + (x - oc.0) * ou, oc.1 + (y - oc.1) * ou);
+            let bx = x * sc + (BOX - w * sc) / 2.0;
+            let by = BOX - ((y + HUD) * sc + (BOX - (h + HUD) * sc) / 2.0);
             (bx.clamp(0.0, BOX) as i16, by.clamp(0.0, BOX) as i16)
         };
         let (a, b) = (m(x0, y0), m(x1, y1));
@@ -58,13 +76,13 @@ impl Pen<'_> {
     }
 
     fn ship(&mut self, cx: f32, cy: f32, s: f32) {
-        self.next();
+        self.object(cx, cy);
         const P: [(f32, f32); 10] = [(0.0, -9.0), (3.0, -1.0), (9.0, 6.0), (9.0, 9.0), (3.0, 6.0), (0.0, 8.0), (-3.0, 6.0), (-9.0, 9.0), (-9.0, 6.0), (-3.0, -1.0)];
         self.poly(cx, cy, s, &P, true);
     }
 
     fn bee(&mut self, cx: f32, cy: f32, flap: i32) {
-        self.next();
+        self.object(cx, cy);
         self.poly(cx, cy, 1.0, &[(-3.0, -6.0), (3.0, -6.0), (5.0, 0.0), (0.0, 8.0), (-5.0, 0.0)], true);
         let up = if flap == 0 { -7.0 } else { 3.0 };
         let wing = [(-5.0, -1.0), (-11.0, up), (-5.0, 3.0)];
@@ -73,7 +91,7 @@ impl Pen<'_> {
     }
 
     fn butterfly(&mut self, cx: f32, cy: f32, flap: i32) {
-        self.next();
+        self.object(cx, cy);
         let (a, b) = if flap == 0 { (-8.0, 7.0) } else { (-3.0, 4.0) };
         let wing = [(-2.0, -1.0), (-11.0, a), (-10.0, b), (-2.0, 3.0)];
         self.poly(cx, cy, 1.0, &wing, false);
@@ -84,7 +102,7 @@ impl Pen<'_> {
     }
 
     fn boss(&mut self, cx: f32, cy: f32, flap: i32, hurt: bool) {
-        self.next();
+        self.object(cx, cy);
         self.poly(cx, cy, 1.0, &[(-7.0, -6.0), (-5.0, -10.0), (-2.0, -6.0), (0.0, -10.0), (2.0, -6.0), (5.0, -10.0), (7.0, -6.0)], false);
         self.poly(cx, cy, 1.0, &[(-7.0, -6.0), (-10.0, 0.0), (-6.0, 7.0), (0.0, 9.0), (6.0, 7.0), (10.0, 0.0), (7.0, -6.0)], false);
         let leg = if flap == 0 { 10.0 } else { 7.0 };
@@ -97,7 +115,7 @@ impl Pen<'_> {
 
     /// A burst of the arcade: `n` short radial dashes (single pixels on a raster screen) between the radii r0 and r1; `seed` makes every step another scatter.
     fn burst(&mut self, cx: f32, cy: f32, n: i32, r0: f32, r1: f32, seed: i32) {
-        self.next();
+        self.object(cx, cy);
         for j in 0..n {
             let t = j as f32 * 2.399_963 + seed as f32 * 1.7;
             let r = r0 + (r1 - r0) * (((j * 7 + seed * 3) % n.max(1)) as f32 / n.max(1) as f32);
@@ -107,19 +125,20 @@ impl Pen<'_> {
 
     /// The first step of a burst: a small cross.
     fn star(&mut self, cx: f32, cy: f32, r: f32) {
-        self.next();
+        self.object(cx, cy);
         self.line(cx - r, cy, cx + r, cy);
         self.line(cx, cy - r, cx, cy + r);
     }
 
     /// The tractor beam: a cone of thin rings (one every 2 game pixels), the first ones bowed; a ring that is lit is drawn twice (the beam rests twice on it: brighter), and which ones are lit runs down.
     fn beam(&mut self, g: &Game) {
-        self.next();
+        let f = self.f;
         let b = &g.al[g.cap_boss as usize];
         let n = if g.cap == C_BEAM { g.beam_len } else { 4 };
-        let (cx, y0) = (b.x as f32 - 12.0, b.y as f32 - 44.0 + 14.0);
+        let (cx, y0) = (b.x as f32 + f.sprite as f32 / 2.0 - f.x0 as f32, b.y as f32 + oy(f) - f.y0 as f32 + 14.0 * f.sprite as f32 / 24.0);
+        self.object(cx, y0); // the rings are as long as in the landscape field (the ship is as far below the boss), and as wide as its sprites
         for i in 0..n * 4 {
-            let y = y0 + i as f32 * 2.0;
+            let y = y0 + i as f32 * 2.0 / self.ou;
             let hw = 12.0 + i as f32 * 1.4;
             let lit = (i - (g.frame >> 2)).rem_euclid(4) == 0;
             for _ in 0..if lit { 2 } else { 1 } {
@@ -154,10 +173,24 @@ impl Pen<'_> {
         }
     }
 
+    /// A text in the middle of the play area; `y` is in game pixels of a field 200 high (a taller field has the same rows of text, further apart),
+    /// and the letters are made smaller when the text is wider than 94% of the field.
     fn ctext(&mut self, y: f32, u: f32, s: &str) {
-        let w = s.chars().count() as f32 * 6.0 * u - 2.0 * u;
-        self.text((320.0 - w) / 2.0, y, u, s);
+        let n = s.chars().count() as f32;
+        let u = u.min(self.f.w as f32 * 0.94 / (n * 6.0 - 2.0));
+        let w = n * 6.0 * u - 2.0 * u;
+        self.text((self.f.w as f32 - w) / 2.0, y * self.f.h as f32 / 200.0, u, s);
     }
+}
+
+/// Where the middle of an alien's sprite is, below the top of its box (the drawings of the landscape field are made around a point 6 below it).
+fn oy(f: Field) -> f32 {
+    if f.portrait { f.sprite as f32 / 2.0 } else { 6.0 }
+}
+
+/// The same for the ship's sprite (7 in the landscape field).
+fn oy_ship(f: Field) -> f32 {
+    if f.portrait { f.sprite as f32 / 2.0 } else { 7.0 }
 }
 
 /// The strokes of a letter on a grid of 4 x 6 units: points as two digits (x y), a space between points, `|` between strokes.
@@ -267,7 +300,10 @@ pub fn build_unordered(g: &Game, out: &mut Vec<Seg>) {
 pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
     out.clear();
     ids.clear();
-    let mut p = Pen { out, ids, obj: 0 };
+    let f = Field::of(g.geo);
+    let mut p = Pen { out, ids, obj: 0, f, oc: (0.0, 0.0), ou: 1.0 };
+    let (fw, fx0, fy0, half) = (f.w as f32, f.x0 as f32, f.y0 as f32, f.sprite as f32 / 2.0);
+    let (x_alien, y_alien, y_ship) = (|x: i32| x as f32 + half - fx0, |y: i32| y as f32 + oy(f) - fy0, |y: i32| y as f32 + oy_ship(f) - fy0);
     if g.state == S_TITLE {
         p.ctext(34.0, 7.0, "GALAGA");
         p.ctext(112.0, 2.0, &format!("HI-SCORE {}", number(g.hi)));
@@ -275,12 +311,14 @@ pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
         return;
     }
     // the numbers above the play area: score at the left, the hi-score in the middle, stage and lives at the right
-    p.text(4.0, -20.0, 2.6, &number(g.score));
+    // (the portrait field is narrower: the same numbers a little smaller, and the places at 0, 40, 62 and 80 % of its width, not at 1, 41, 78 and 92 %)
+    let (tu, hx, sx, lx) = if f.portrait { (1.9, fw * 0.40, fw * 0.62, fw * 0.80) } else { (2.6, 130.0, 250.0, 296.0 - 12.0) };
+    p.text(if f.portrait { 2.0 } else { 4.0 }, -20.0, tu, &number(g.score));
     let hs = number(g.hi);
-    p.text(130.0 - hs.len() as f32 * 7.8 / 2.0, -20.0, 2.6, &hs);
-    p.text(250.0, -20.0, 2.6, &number(g.stage));
+    p.text(hx - hs.len() as f32 * 1.5 * tu, -20.0, tu, &hs);
+    p.text(sx, -20.0, tu, &number(g.stage));
     for i in 0..g.lives.clamp(0, 5) {
-        p.ship(296.0 + i as f32 * 8.0 - 12.0, -12.0, 0.45);
+        p.ship(lx + i as f32 * 8.0, -12.0, 0.45);
     }
     if (g.cap == C_BEAM && g.beam_len > 0) || g.cap == C_PULL {
         p.beam(g);
@@ -291,7 +329,7 @@ pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
         if a.st == A_DEAD || (a.st == A_ENTER && a.ent == 0) {
             continue;
         }
-        let (cx, cy) = (a.x as f32 - 12.0, a.y as f32 - 44.0);
+        let (cx, cy) = (x_alien(a.x), y_alien(a.y));
         if a.st == A_EXPLODE {
             let f = ((G_EXPL_TICKS - a.timer) >> 2).clamp(0, 4);
             match f {
@@ -308,24 +346,25 @@ pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
             T_BUTTERFLY => p.butterfly(cx, cy, flap),
             _ => p.bee(cx, cy, flap),
         }
-        if a.typ == T_BOSS && g.cap == C_CARRY && g.cap_boss == i as i32 && a.y >= 32 {
-            p.ship(a.x as f32 - 12.0, a.y as f32 - 16.0 - 44.0 + 7.0, 0.7); // the captured fighter hangs under the boss
+        if a.typ == T_BOSS && g.cap == C_CARRY && g.cap_boss == i as i32 && a.y - g.geo.capt_dy >= f.y0 - f.sprite - 10 {
+            p.ship(x_alien(a.x), y_ship(a.y - g.geo.capt_dy), 0.7); // the captured fighter hangs under the boss
         }
     }
     for b in g.ps.iter().filter(|b| b.act != 0) {
-        p.next();
-        let (x, y) = (b.x as f32 + 9.0 - 24.0, b.y as f32 + 6.0 - 50.0);
+        // a shot leaves above the ship's middle (the landscape field draws it 6 below the shot's y; the portrait field 4)
+        let (x, y) = (b.x as f32 + half - g.geo.shot_dx as f32 - fx0, b.y as f32 + if f.portrait { 4.0 } else { 6.0 } - fy0);
+        p.object(x, y);
         p.line(x, y - 4.0, x, y + 4.0);
     }
     for b in g.eb.iter().filter(|b| b.act != 0) {
-        p.next();
-        let (x, y) = (b.x as f32 + 12.0 - 24.0, b.y as f32 + 4.0 - 50.0);
+        let (x, y) = (x_alien(b.x), b.y as f32 + if f.portrait { 3.0 } else { 4.0 } - fy0);
+        p.object(x, y);
         p.poly(x, y, 1.0, &[(0.0, -3.0), (1.5, 0.0), (0.0, 3.0), (-1.5, 0.0)], true);
     }
     let show = matches!(g.state, S_INTRO | S_PLAY | S_RESULT | S_CAPTURED);
     if g.state == S_DYING && g.dying_quiet == 0 {
         let f = ((G_DIE_TICKS - g.state_timer) >> 3).max(0);
-        let (sx, sy) = (g.px as f32 + 12.0 - 24.0 + if g.dual != 0 { 8.0 } else { 0.0 }, g.py as f32 + 7.0 - 50.0);
+        let (sx, sy) = (x_alien(g.px) + if g.dual != 0 { g.geo.dual_dx as f32 / 2.0 } else { 0.0 }, y_ship(g.py));
         match f {
             0 => p.star(sx, sy, 4.0),
             1 => p.burst(sx, sy, 14, 2.0, 8.0, f),
@@ -336,13 +375,13 @@ pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
             _ => {}
         }
     } else if show && !(g.state == S_PLAY && (g.invuln & 4) != 0) {
-        let (sx, sy) = (g.px as f32 + 12.0 - 24.0, g.py as f32 + 7.0 - 50.0);
+        let (sx, sy) = (x_alien(g.px), y_ship(g.py));
         p.ship(sx, sy, 1.0);
         if g.dual != 0 {
-            p.ship(sx + 16.0, sy, 1.0);
+            p.ship(sx + g.geo.dual_dx as f32, sy, 1.0);
         }
         if g.cap == C_RESCUE {
-            p.ship(g.rx as f32 + 12.0 - 24.0, g.ry as f32 + 7.0 - 50.0, 1.0);
+            p.ship(x_alien(g.rx), y_ship(g.ry), 1.0);
         }
     }
     match g.state {
@@ -380,8 +419,8 @@ pub fn build_tagged(g: &Game, out: &mut Vec<Seg>, ids: &mut Vec<u16>) {
 mod tests {
     use super::*;
 
-    fn run(ticks: i32, god: bool, stage: i32) -> (Game, usize, usize) {
-        let mut g = Game::new(1234);
+    fn run(ticks: i32, god: bool, stage: i32, portrait: bool) -> (Game, usize, usize) {
+        let mut g = Game::with_field(1234, portrait);
         let mut v = Vec::new();
         let (mut most, mut sum) = (0, 0);
         for _ in 0..ticks {
@@ -441,7 +480,7 @@ mod tests {
 
     #[test]
     fn a_game_stays_inside_the_box_and_the_budget() {
-        let (g, most, avg) = run(6000, true, 0);
+        let (g, most, avg) = run(6000, true, 0, false);
         assert!(g.score > 0);
         assert!(most > 100, "the picture is empty: {most}");
         assert!(most <= BUDGET, "most segments in a frame: {most}");
@@ -450,7 +489,38 @@ mod tests {
 
     #[test]
     fn a_late_stage_with_a_full_formation_stays_in_the_budget() {
-        let (_, most, _) = run(3000, true, 7);
+        let (_, most, _) = run(3000, true, 7, false);
         assert!(most <= BUDGET, "most segments in a frame: {most}");
+    }
+
+    #[test]
+    fn a_portrait_game_stays_inside_the_box_and_the_budget() {
+        let (g, most, avg) = run(6000, true, 0, true);
+        assert!(g.score > 0);
+        assert!(most > 100 && most <= BUDGET, "most segments in a frame: {most}");
+        assert!(avg > 60, "average {avg}");
+        let (_, most, _) = run(3000, true, 7, true);
+        assert!(most <= BUDGET, "most segments in a late stage: {most}");
+    }
+
+    #[test]
+    fn the_portrait_picture_is_narrow_and_in_the_middle() {
+        let mut g = Game::with_field(1234, true);
+        let mut v = Vec::new();
+        let (mut lo, mut hi) = (i16::MAX, i16::MIN);
+        for _ in 0..3000 {
+            g.invuln = 100;
+            let inp = game_autoplay(&g);
+            g.tick(&inp, 0);
+            g.snd = 0;
+            build(&g, &mut v);
+            for s in &v {
+                lo = lo.min(s[0]).min(s[2]);
+                hi = hi.max(s[0]).max(s[2]);
+            }
+        }
+        // 204 of the 286 game pixels (the height with the HUD) are as wide as the box: 2921 units, from 587 to 3508 (aliens that fly in or dive reach over the edge)
+        assert!(lo >= 300 && hi <= 3800, "x from {lo} to {hi}");
+        assert!(hi - lo > 2500, "x from {lo} to {hi}: the picture should use the width of the field");
     }
 }

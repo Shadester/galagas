@@ -37,13 +37,15 @@ fn with<R>(f: impl FnOnce(&mut Web) -> R) -> Option<R> {
     WEB.with(|w| w.borrow_mut().as_mut().map(f))
 }
 
-/// Start (again): the hi-score from the page, the options (`start_stage` 0 = stage 1), and the size of the window in cells.
+/// Start (again): the hi-score from the page, the options (`start_stage` 0 = stage 1), the size of the window in cells, and the field
+/// (`portrait` 1: the arcade's portrait field; 0, or an argument that is left out: the C64's landscape field).
 #[no_mangle]
-pub extern "C" fn web_init(hi: i32, start_stage: i32, god: i32, autoplay: i32, cols: u32, rows: u32) {
+pub extern "C" fn web_init(hi: i32, start_stage: i32, god: i32, autoplay: i32, cols: u32, rows: u32, portrait: i32) {
     let (cols, rows) = (cols as usize, rows as usize);
+    let game = Game::with_field(hi, portrait != 0);
     let w = Web {
-        game: Game::new(hi),
-        renderer: layout(cols, rows).map(Renderer::new),
+        renderer: layout(Field::of(game.geo), cols, rows).map(Renderer::new),
+        game,
         cols,
         rows,
         buf: Vec::new(),
@@ -62,7 +64,7 @@ pub extern "C" fn web_resize(cols: u32, rows: u32) {
     with(|w| {
         w.cols = cols as usize;
         w.rows = rows as usize;
-        w.renderer = layout(w.cols, w.rows).map(Renderer::new);
+        w.renderer = layout(Field::of(w.game.geo), w.cols, w.rows).map(Renderer::new);
     });
 }
 
@@ -97,7 +99,7 @@ pub extern "C" fn web_draw() -> *const u8 {
     with(|w| {
         let f = match w.renderer.as_mut() {
             Some(r) => r.draw(&w.game, w.cols, w.rows),
-            None => too_small(w.cols, w.rows),
+            None => too_small(Field::of(w.game.geo), w.cols, w.rows),
         };
         w.buf.clear();
         for c in &f.cells {
@@ -162,7 +164,7 @@ mod tests {
     #[test]
     fn the_exports_play_the_same_game() {
         let (cols, rows) = (107u32, 36u32);
-        web_init(1234, 0, 1, 1, cols, rows);
+        web_init(1234, 0, 1, 1, cols, rows, 0);
         let mut g = Game::new(1234);
         for _ in 0..4000 {
             web_tick(0);
@@ -187,5 +189,36 @@ mod tests {
         let p = web_draw();
         let cells = unsafe { std::slice::from_raw_parts(p, 70 * 20 * 12) };
         assert!(cells.chunks(12).any(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]) == 'P' as u32));
+    }
+
+    #[test]
+    fn the_portrait_field_plays_the_same_game_too() {
+        let (cols, rows) = (68u32, 46u32); // the half block scale 3 of the portrait field
+        web_init(1234, 0, 1, 1, cols, rows, 1);
+        let mut g = Game::with_field(1234, true);
+        for _ in 0..4000 {
+            web_tick(0);
+            g.invuln = 100;
+            let inp = game_autoplay(&g);
+            g.tick(&inp, 0);
+            g.snd = 0;
+            g.save_req = 0;
+        }
+        assert_eq!(web_checksum(), checksum(&g));
+        assert!(g.score > 0 && g.px >= PORTRAIT.left && g.px <= PORTRAIT.ship_xmax);
+        let p = web_lines();
+        let n = web_line_count() as usize;
+        let l = unsafe { std::slice::from_raw_parts(p, n * 4) };
+        assert!(n > 20 && l.iter().all(|&c| (0..=4095).contains(&c)));
+        // the portrait picture is narrower than the box: x between 587 and 3508 (204 of 286 game pixels), centred
+        assert!(l.chunks(4).all(|s| (300..=3800).contains(&s[0]) && (300..=3800).contains(&s[2])));
+        let p = web_draw();
+        let cells = unsafe { std::slice::from_raw_parts(p, (cols * rows * 12) as usize) };
+        assert!(cells.chunks(12).any(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]) == '▀' as u32 && c[4..7] != [0, 0, 0]));
+        web_resize(60, 30); // too small for the portrait field
+        let p = web_draw();
+        let cells = unsafe { std::slice::from_raw_parts(p, 60 * 30 * 12) };
+        let text: String = cells.chunks(12).map(|c| char::from_u32(u32::from_le_bytes([c[0], c[1], c[2], c[3]])).unwrap()).collect();
+        assert!(text.contains("at least 51 x 35"), "{}", text.trim());
     }
 }

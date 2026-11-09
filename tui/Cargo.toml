@@ -2,7 +2,7 @@
 name = "galaga-tui"
 version = "0.1.0"
 edition = "2021"
-description = "Galaga for the terminal: the arcade rules of psp/game.c in Rust, half-block pixel art"
+description = "Galaga for the terminal: the arcade rules of psp/game.c in Rust, half-block pixel art (real pixels in a terminal with the kitty graphics protocol)"
 
 [lib]
 crate-type = ["rlib", "cdylib"]      # the cdylib is the WebAssembly module of docs/tui (tools/build_web.sh)
@@ -14,10 +14,11 @@ required-features = ["terminal"]
 
 [features]
 default = ["terminal"]
-terminal = ["dep:crossterm"]         # the terminal front end; without it the library is the rules and the renderer only
+terminal = ["dep:crossterm", "dep:miniz_oxide"]   # the terminal front end; without it the library is the rules and the renderer only
 
 [dependencies]
 crossterm = { version = "0.28", optional = true }
+miniz_oxide = { version = "0.9", optional = true }   # zlib for the images of the kitty graphics protocol
 
 [profile.release]
 opt-level = "s"

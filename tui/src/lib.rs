@@ -2,8 +2,10 @@
 //! The terminal front end (`input`, `term`, `hiscore`, and the program in main.rs) needs the feature `terminal`; the browser front end (`web`)
 //! is the WebAssembly module of docs/tui.
 pub mod arcade_data;
+pub mod arcade_data_portrait;
 pub mod art;
 pub mod game;
+pub mod octant;
 pub mod render;
 pub mod scope;
 #[cfg(feature = "terminal")]

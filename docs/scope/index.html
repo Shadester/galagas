@@ -43,7 +43,7 @@
 (async () => {
   const K_LEFT = 1, K_RIGHT = 2, K_FIRE = 4, K_PAUSE = 8, K_QUIT = 16;
   const SR = 48000, SPEED = 130;                           // 48 kHz; a line of the picture takes one sample for every SPEED box units
-  const q = new URLSearchParams(location.search);          // ?autoplay  ?god  ?stage=3  ?xy
+  const q = new URLSearchParams(location.search);          // ?autoplay  ?god  ?stage=3  ?xy  ?landscape (the C64's field; the default is the arcade's portrait field)
   let x;
   try {
     x = (await WebAssembly.instantiate(await (await fetch('galaga.wasm')).arrayBuffer(), {})).instance.exports;
@@ -54,7 +54,7 @@
   let hi = 0;
   try { hi = parseInt(localStorage.getItem('galaga-scope-hi'), 10) || 0; } catch (e) {}
   const saveHi = () => { try { localStorage.setItem('galaga-scope-hi', String(x.web_hi())); } catch (e) {} };
-  x.web_init(hi, parseInt(q.get('stage'), 10) || 0, q.has('god') ? 1 : 0, q.has('autoplay') ? 1 : 0, 160, 52);
+  x.web_init(hi, parseInt(q.get('stage'), 10) || 0, q.has('god') ? 1 : 0, q.has('autoplay') ? 1 : 0, 160, 52, q.has('landscape') ? 0 : 1);
 
   // ---- the signal: the segments as samples (x, y pairs in -1..1), the beam walks every line, and jumps between them ----
   function trace(s, n) {

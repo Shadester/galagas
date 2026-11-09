@@ -35,7 +35,7 @@ I could not test a real oscilloscope while I wrote this: the software scope and 
 
 ## Options and keys
 
-`?autoplay` (the ship plays itself), `?god` (the ship cannot be hit), `?stage=N`, `?xy` (XY out on: the audio starts at the first key or click).
+`?autoplay` (the ship plays itself), `?god` (the ship cannot be hit), `?stage=N`, `?xy` (XY out on: the audio starts at the first key or click), `?landscape` (the C64's field, 320 x 200; the default is the arcade's own portrait field, 204 x 260, which has more room between the aliens and the ship and is narrower than the square screen).
 Arrow keys or A / D move, Space fires, P pauses.
 
 ## Build and test

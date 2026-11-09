@@ -1,6 +1,6 @@
 //! Runs the rules with scripted input and prints the whole game state after every tick, for tests/test_lockstep.py.
 //! The script and the line format are those of ../thumby/tests/c_trace.c (the C reference).
-//! Usage: trace TICKS [START_STAGE] [FORCECAPTURE 0|1] [GODMODE 0|1]
+//! Usage: trace TICKS [START_STAGE] [FORCECAPTURE 0|1] [GODMODE 0|1] [PORTRAIT 0|1]
 use galaga_tui::game::*;
 
 fn script(g: &Game, t: i32, force_capture: bool) -> Input {
@@ -31,7 +31,7 @@ fn main() {
     let start_stage = a.get(1).copied().unwrap_or(0);
     let force_capture = a.get(2).copied().unwrap_or(0) != 0;
     let god = a.get(3).copied().unwrap_or(0) != 0;
-    let mut g = Game::new(0);
+    let mut g = Game::with_field(0, a.get(4).copied().unwrap_or(0) != 0);
     let mut out = String::new();
     for t in 0..ticks {
         let inp = script(&g, t, force_capture);

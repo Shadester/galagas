@@ -8,7 +8,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 TUI = os.path.join(HERE, '..')
 TICKS = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 3000
-# name: (C flags, start stage, force capture, god)
+# name: (C flags, start stage, force capture, god); the p_ scenarios are the arcade's portrait field (-DRULES_PORTRAIT, Game::with_field(.., true))
 SCENARIOS = {
     'stage1': ([], 0, 0, 0),
     'challenge': (['-DSTART_STAGE=3'], 3, 0, 0),
@@ -20,6 +20,7 @@ SCENARIOS = {
     'godcapture': (['-DGODMODE', '-DFORCECAPTURE'], 0, 1, 1),
     'godstage12': (['-DGODMODE', '-DSTART_STAGE=12'], 12, 0, 1),
 }
+SCENARIOS.update({'p_' + k: (v[0] + ['-DRULES_PORTRAIT'], *v[1:]) for k, v in list(SCENARIOS.items())})
 NAMES = [a for a in sys.argv[1:] if a in SCENARIOS] or list(SCENARIOS)
 
 subprocess.run(['cargo', 'build', '--release', '--example', 'trace', '-q'], cwd=TUI, check=True)
@@ -30,7 +31,7 @@ for name in NAMES:
     exe = os.path.join(TUI, 'target', 'c_trace_' + name)
     subprocess.run(['cc', '-O1', '-w', f'-DTICKS={TICKS}', *flags, '-o', exe, os.path.join(HERE, '..', '..', 'thumby', 'tests', 'c_trace.c'), '-lm'], check=True)
     c_lines = subprocess.run([exe], check=True, capture_output=True, text=True).stdout.split('\n')
-    r_lines = subprocess.run([RUST, str(TICKS), str(stage), str(force), str(god)], check=True, capture_output=True, text=True).stdout.split('\n')
+    r_lines = subprocess.run([RUST, str(TICKS), str(stage), str(force), str(god), str(int('-DRULES_PORTRAIT' in flags))], check=True, capture_output=True, text=True).stdout.split('\n')
     states = set()
     for t in range(TICKS):
         if c_lines[t] != r_lines[t]:

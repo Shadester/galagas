@@ -1,10 +1,12 @@
 //! Galaga game rules: a translation of psp/game.c (the arcade rules, 40 aliens) and psp/game.h.
 //! Keep the names and the order of the C code, and check a change with tests/test_lockstep.py.
-//! The logic runs at 50 ticks a second in C64 sprite coordinates: the play area is x 24..343, y 50..249, and x / y are the top left
-//! corner of a 24 x 21 sprite box.
+//! The logic runs at 50 ticks a second in one of two fields (`Geo`): the landscape one, in C64 sprite coordinates (the play area is x 24..343,
+//! y 50..249, and x / y are the top left corner of a 24 x 21 sprite box), or the arcade's own portrait field (x 0..203, y 0..253, 16 x 16 sprites;
+//! psp/game.c with -DRULES_PORTRAIT).
 #![allow(dead_code)]
 
 use crate::arcade_data::*;
+use crate::arcade_data_portrait as portrait;
 
 pub const NAL: usize = 40;
 pub const EBN: usize = 8; // enemy bombs on the screen
@@ -55,9 +57,6 @@ pub const JG_BONUS: i32 = 512;
 
 /// the arcade limits the sideways speed of a bomb to 0.6 of its fall speed (2.5 px a tick): 0.6 x 2.5 x 16
 const BOMB_MAX_DX: i32 = 24;
-/// A diver drops no bombs below this line. In the arcade it is 97 of the 288 screen lines above the ship (a third of the screen),
-/// so a bomb always falls far: here 67 of 200 lines.
-const BOMB_LOW_Y: i32 = 163;
 
 const ARC_BEE_FROM: usize = 20; // the slots of the kinds, and the six butterflies that escort a boss
 const ARC_BEE_TO: usize = 40;
@@ -106,8 +105,106 @@ pub struct Input {
     pub quit: bool,
 }
 
+/// The geometry of a field: the names of the G_* macros of psp/game.h (the two blocks of RULES_PORTRAIT), in lower case.
+pub struct Geo {
+    pub portrait: bool,
+    /// where the field is: the game coordinates of its top left corner and its size, and the size of a sprite (for the renderer)
+    pub x0: i32,
+    pub y0: i32,
+    pub width: i32,
+    pub height: i32,
+    pub sprite: i32,
+    pub left: i32,
+    pub ship_xmax: i32,
+    pub ship_x0: i32,
+    pub ship_y: i32,
+    pub dual_dx: i32,
+    pub ship_v: i32,
+    pub shot_dx: i32,
+    pub shot_dy: i32,
+    pub shot_v: i32,
+    pub shot_top: i32,
+    pub hide_y: i32,
+    pub ret_y0: i32,
+    pub off_y: i32,
+    pub beam_y: i32,
+    pub bomb_off_y: i32,
+    /// a diver drops no bombs below this line (in the arcade it is 97 of the 288 screen lines above the ship) or above the top
+    pub bomb_low_y: i32,
+    pub bomb_top_y: i32,
+    pub bomb_dy: i32,
+    pub mid_x: i32,
+    pub capt_dy: i32,
+    pub home_v: i32,
+    pub home_near: i32,
+    pub ret_v: i32,
+    pub peel_vx: i32,
+    pub peel_vy: i32,
+    pub cdive_v0: i32,
+    pub cdive_v1: i32,
+    pub tail_vy: i32,
+    pub resc_vy: i32,
+    pub resc_vx: i32,
+    pub pull_v: i32,
+    pub pull_done: i32,
+    pub hb_shot_y: i32,
+    pub hb_shot_xl: i32,
+    pub hb_shot_xr: i32,
+    pub hb_bomb_y0: i32,
+    pub hb_bomb_y1: i32,
+    pub hb_bomb_xl: i32,
+    pub hb_bomb_xr: i32,
+    pub hb_ram_y0: i32,
+    pub hb_ram_y1: i32,
+    pub hb_ram_x: i32,
+    pub hb_beam_xl: i32,
+    pub hb_beam_xr: i32,
+    pub hb_dock_l: i32,
+    pub hb_dock_r: i32,
+    /// the swing of the formation: arcade pixels to units
+    pub form_dx: fn(i32) -> i32,
+}
+
+fn form_dx_landscape(p: i32) -> i32 {
+    p + p * 3 / 7 // 320 / 224
+}
+fn form_dx_portrait(p: i32) -> i32 {
+    p * 88 / 100
+}
+
+pub static LANDSCAPE: Geo = Geo {
+    portrait: false, x0: 24, y0: 50, width: 320, height: 200, sprite: 24,
+    left: 24, ship_xmax: 320, ship_x0: 160, ship_y: 230, dual_dx: 16, ship_v: 2, shot_dx: 3, shot_dy: 16, shot_v: 4, shot_top: 20,
+    hide_y: 255, ret_y0: 0, off_y: 244, beam_y: 196, bomb_off_y: 250, bomb_low_y: 163, bomb_top_y: -32000, bomb_dy: 8, mid_x: 184,
+    capt_dy: 16, home_v: 2, home_near: 3, ret_v: 2, peel_vx: 2, peel_vy: 1, cdive_v0: 2, cdive_v1: 3, tail_vy: 3, resc_vy: 3, resc_vx: 2,
+    pull_v: 2, pull_done: 22, hb_shot_y: 8, hb_shot_xl: 6, hb_shot_xr: 12, hb_bomb_y0: -3, hb_bomb_y1: 10, hb_bomb_xl: 6, hb_bomb_xr: 7,
+    hb_ram_y0: 7, hb_ram_y1: 8, hb_ram_x: 8, hb_beam_xl: 20, hb_beam_xr: 19, hb_dock_l: 4, hb_dock_r: 3, form_dx: form_dx_landscape,
+};
+
+pub static PORTRAIT: Geo = Geo {
+    portrait: true, x0: 0, y0: 0, width: 204, height: 260, sprite: 16,
+    left: 4, ship_xmax: 186, ship_x0: 95, ship_y: 242, dual_dx: 16, ship_v: 1, shot_dx: 7, shot_dy: 12, shot_v: 4, shot_top: 4,
+    hide_y: 255, ret_y0: -16, off_y: 250, beam_y: 208, bomb_off_y: 250, bomb_low_y: 149, bomb_top_y: 0, bomb_dy: 6, mid_x: 95,
+    capt_dy: 12, home_v: 2, home_near: 2, ret_v: 2, peel_vx: 1, peel_vy: 1, cdive_v0: 2, cdive_v1: 3, tail_vy: 2, resc_vy: 3, resc_vx: 2,
+    pull_v: 2, pull_done: 14, hb_shot_y: 5, hb_shot_xl: 4, hb_shot_xr: 8, hb_bomb_y0: -2, hb_bomb_y1: 7, hb_bomb_xl: 4, hb_bomb_xr: 5,
+    hb_ram_y0: 5, hb_ram_y1: 5, hb_ram_x: 5, hb_beam_xl: 13, hb_beam_xr: 12, hb_dock_l: 3, hb_dock_r: 2, form_dx: form_dx_portrait,
+};
+
+/// The arcade tables that depend on the field (the others are shared): paths, formation slots, dive paths, breathing.
+pub struct Arc {
+    pub path: &'static [Path],
+    pub slot: &'static [[i32; 2]; 40],
+    pub dive_path: &'static [DivePath],
+    pub breath: &'static [[i32; 10]; 64],
+}
+
+pub static ARC_LANDSCAPE: Arc = Arc { path: &ARC_PATH, slot: &ARC_SLOT, dive_path: &ARC_DIVE_PATH, breath: &ARC_BREATH };
+pub static ARC_PORTRAIT: Arc = Arc { path: &portrait::ARC_PATH, slot: &portrait::ARC_SLOT, dive_path: &portrait::ARC_DIVE_PATH, breath: &portrait::ARC_BREATH };
+
 #[derive(Clone)]
 pub struct Game {
+    pub geo: &'static Geo,
+    pub arc: &'static Arc,
     pub state: i32,
     pub paused: i32,
     pub state_timer: i32,
@@ -165,24 +262,24 @@ pub struct Game {
     pub eb: [Bullet; EBN],
 }
 
-pub fn slot_x(i: usize) -> i32 {
-    ARC_SLOT[i][0]
+pub fn slot_x(g: &Game, i: usize) -> i32 {
+    g.arc.slot[i][0]
 }
-pub fn slot_y(i: usize) -> i32 {
-    ARC_SLOT[i][1]
+pub fn slot_y(g: &Game, i: usize) -> i32 {
+    g.arc.slot[i][1]
 }
 
 /// where a slot is now: the swing of the whole formation and the breathing of its columns and rows
 fn slot_px(g: &Game, i: usize) -> i32 {
-    let mut x = slot_x(i) + g.form_dx;
+    let mut x = slot_x(g, i) + g.form_dx;
     let c = ARC_SLOT_COL[i] as usize;
     if g.breathe != 0 {
-        x += if c < 5 { ARC_BREATH[g.bstep as usize][c] } else { -ARC_BREATH[g.bstep as usize][9 - c] };
+        x += if c < 5 { g.arc.breath[g.bstep as usize][c] } else { -g.arc.breath[g.bstep as usize][9 - c] };
     }
     x
 }
 fn slot_py(g: &Game, i: usize) -> i32 {
-    slot_y(i) + if g.breathe != 0 { ARC_BREATH[g.bstep as usize][5 + ARC_SLOT_ROW[i] as usize] } else { 0 }
+    slot_y(g, i) + if g.breathe != 0 { g.arc.breath[g.bstep as usize][5 + ARC_SLOT_ROW[i] as usize] } else { 0 }
 }
 
 /// the arcade repeats stages 23..26 (its tables stop there)
@@ -243,7 +340,7 @@ fn setup_stage(g: &mut Game) {
         a.typ = if i < 4 { T_BOSS } else if i < 20 { T_BUTTERFLY } else { T_BEE };
         a.hp = if g.challenge == 0 && a.typ == T_BOSS { 2 } else { 1 };
         a.st = A_ENTER;
-        a.y = 255;
+        a.y = g.geo.hide_y;
         g.al[i] = a;
     }
     // the launch list of the stage's row: when each slot starts, and on which path (slot -1: an extra enemy, not used yet)
@@ -253,7 +350,7 @@ fn setup_stage(g: &mut Game) {
             a.dly = l[0];
             a.path = l[2];
             a.bflags = if ARC_ENTRY_BOMB[l[1] as usize] != 0 { ARC_ROW[row].hdr1 } else { 0 };
-            a.btmr = ARC_PATH[l[2] as usize].bt; // the bombs of an enemy that flies in
+            a.btmr = g.arc.path[l[2] as usize].bt; // the bombs of an enemy that flies in
         }
     }
 }
@@ -280,8 +377,8 @@ fn start_game(g: &mut Game, start_stage_no: i32) {
     g.next_bonus = 20000;
     g.dual = 0;
     g.cap = C_NONE;
-    g.px = 160;
-    g.py = 230;
+    g.px = g.geo.ship_x0;
+    g.py = g.geo.ship_y;
     g.invuln = 0;
     g.dying_quiet = 0;
     start_stage(g);
@@ -295,8 +392,17 @@ fn game_over(g: &mut Game) {
 }
 
 impl Game {
+    /// The landscape field (the C64's, 320 x 200).
     pub fn new(hi_score: i32) -> Game {
+        Game::with_field(hi_score, false)
+    }
+
+    /// The landscape field, or the arcade's portrait field (psp/game.c with -DRULES_PORTRAIT).
+    pub fn with_field(hi_score: i32, portrait: bool) -> Game {
+        let (geo, arc) = if portrait { (&PORTRAIT, &ARC_PORTRAIT) } else { (&LANDSCAPE, &ARC_LANDSCAPE) };
         Game {
+            geo,
+            arc,
             state: S_TITLE,
             paused: 0,
             state_timer: 0,
@@ -314,8 +420,8 @@ impl Game {
             chal_timer: 0,
             shots: 0,
             hits: 0,
-            px: 160,
-            py: 230,
+            px: geo.ship_x0,
+            py: geo.ship_y,
             invuln: 0,
             dual: 0,
             dying_quiet: 0,
@@ -359,7 +465,7 @@ fn player_hit(g: &mut Game, side: i32) {
     if g.dual != 0 {
         g.dual = 0;
         if side == 0 {
-            g.px += 16;
+            g.px += g.geo.dual_dx;
         }
         g.invuln = 90;
         g.snd |= SND_HIT;
@@ -375,15 +481,16 @@ fn player_hit(g: &mut Game, side: i32) {
 }
 
 fn update_player(g: &mut Game, inp: &Input, fire_press: bool) {
-    let maxx = if g.dual != 0 { 304 } else { 320 };
+    let geo = g.geo;
+    let maxx = if g.dual != 0 { geo.ship_xmax - geo.dual_dx } else { geo.ship_xmax };
     if inp.left {
-        g.px -= 2;
+        g.px -= geo.ship_v;
     }
     if inp.right {
-        g.px += 2;
+        g.px += geo.ship_v;
     }
-    if g.px < 24 {
-        g.px = 24;
+    if g.px < geo.left {
+        g.px = geo.left;
     }
     if g.px > maxx {
         g.px = maxx;
@@ -396,8 +503,8 @@ fn update_player(g: &mut Game, inp: &Input, fire_press: bool) {
         for i in n * 2..n * 2 + 2 {
             if g.ps[i].act == 0 {
                 g.ps[i].act = 1;
-                g.ps[i].x = g.px + 3 + 16 * n as i32;
-                g.ps[i].y = 214;
+                g.ps[i].x = g.px + geo.shot_dx + geo.dual_dx * n as i32;
+                g.ps[i].y = geo.ship_y - geo.shot_dy;
                 if g.state != S_RESULT {
                     g.shots += 1; // the result screen shows the stage's shots: later ones do not count
                 }
@@ -411,8 +518,8 @@ fn update_player(g: &mut Game, inp: &Input, fire_press: bool) {
 fn update_pshots(g: &mut Game) {
     for i in 0..4 {
         if g.ps[i].act != 0 {
-            g.ps[i].y -= 4;
-            if g.ps[i].y < 20 {
+            g.ps[i].y -= g.geo.shot_v;
+            if g.ps[i].y < g.geo.shot_top {
                 g.ps[i].act = 0;
             }
         }
@@ -463,7 +570,7 @@ fn alien_hit(g: &mut Game, i: usize) {
         if g.cap == C_CARRY && (a.st == A_DIVE || a.st == A_RETURN) {
             g.cap = C_RESCUE;
             g.rx = a.x;
-            g.ry = a.y - 16;
+            g.ry = a.y - g.geo.capt_dy;
             pts += 1000;
             g.snd |= JG_RESCUE;
         } else {
@@ -477,19 +584,19 @@ fn alien_hit(g: &mut Game, i: usize) {
 }
 
 /// mirrored paths are separate paths: no mirror here
-fn path_step(a: &mut Alien) {
-    let d = ARC_PATH[a.path as usize].d;
+fn path_step(arc: &Arc, a: &mut Alien) {
+    let d = arc.path[a.path as usize].d;
     let k = 2 * a.pstep as usize;
     a.x += d[k] as i32;
     a.y += d[k + 1] as i32;
     a.pstep += 1;
 }
 
-fn path_launch(a: &mut Alien) {
+fn path_launch(arc: &Arc, a: &mut Alien) {
     a.ent = 1;
     a.pstep = 0;
-    a.x = ARC_PATH[a.path as usize].sx;
-    a.y = ARC_PATH[a.path as usize].sy;
+    a.x = arc.path[a.path as usize].sx;
+    a.y = arc.path[a.path as usize].sy;
 }
 
 /// The formation swings left and right while the aliens fly in (one arcade pixel every 4 frames, +-32), and when they are all home and
@@ -514,7 +621,7 @@ fn arc_form_frame(g: &mut Game) {
     } else if g.sway_pos <= -32 {
         g.sway_dir = 1;
     }
-    g.form_dx = g.sway_pos + g.sway_pos * 3 / 7; // 320 / 224
+    g.form_dx = (g.geo.form_dx)(g.sway_pos);
 }
 
 fn update_formation(g: &mut Game) {
@@ -541,21 +648,22 @@ fn update_entry(g: &mut Game) {
             }
             g.al[i].dly -= 1;
             if g.al[i].dly <= 0 {
-                path_launch(&mut g.al[i]);
+                path_launch(g.arc, &mut g.al[i]);
             }
         } else if g.al[i].ent == 1 {
-            if g.al[i].pstep >= ARC_PATH[g.al[i].path as usize].n {
+            if g.al[i].pstep >= g.arc.path[g.al[i].path as usize].n {
                 g.al[i].ent = 2;
             } else {
-                path_step(&mut g.al[i]);
+                path_step(g.arc, &mut g.al[i]);
             }
         } else {
             let tx = slot_px(g, i);
             let ty = slot_py(g, i);
+            let (v, near) = (g.geo.home_v, g.geo.home_near);
             let a = &mut g.al[i];
-            a.x += if a.x < tx { 2 } else if a.x > tx { -2 } else { 0 };
-            a.y += if a.y < ty { 2 } else if a.y > ty { -2 } else { 0 };
-            if (a.x - tx).abs() <= 3 && (a.y - ty).abs() <= 3 {
+            a.x += if a.x < tx { v } else if a.x > tx { -v } else { 0 };
+            a.y += if a.y < ty { v } else if a.y > ty { -v } else { 0 };
+            if (a.x - tx).abs() <= near && (a.y - ty).abs() <= near {
                 a.st = A_FORM;
                 a.x = tx;
                 a.y = ty;
@@ -573,12 +681,12 @@ fn update_challenge(g: &mut Game) {
         }
         if a.ent == 0 {
             if g.chal_timer >= a.dly {
-                path_launch(a);
+                path_launch(g.arc, a);
             }
-        } else if a.pstep >= ARC_PATH[a.path as usize].n {
+        } else if a.pstep >= g.arc.path[a.path as usize].n {
             a.st = A_DEAD;
         } else {
-            path_step(a);
+            path_step(g.arc, a);
         }
     }
 }
@@ -590,7 +698,7 @@ fn spawn_ebullet(g: &mut Game, ax: i32, ay: i32) {
         if g.eb[i].act == 0 {
             g.eb[i].act = 1;
             g.eb[i].x = ax;
-            g.eb[i].y = ay + 8;
+            g.eb[i].y = ay + g.geo.bomb_dy;
             // aimed at the ship's place now: the bomb needs (py - y) / 2.5 ticks to fall, so it moves dx / ticks a tick, in 16ths
             g.eb[i].ax = 0;
             g.eb[i].dx = 16 * d / ((g.py - g.eb[i].y) * 2 / 5 + 1);
@@ -614,7 +722,7 @@ fn start_dive(g: &mut Game, i: usize, capture: i32, peel: i32) {
     a.capdive = capture;
     a.dir = if capture != 0 {
         if a.x < px { 1 } else { -1 }
-    } else if a.x >= 184 {
+    } else if a.x >= g.geo.mid_x {
         1
     } else {
         -1
@@ -633,25 +741,26 @@ fn start_dive(g: &mut Game, i: usize, capture: i32, peel: i32) {
     a.dpath = if capture != 0 { -1 } else { ARC_DIVE[label][ARC_SLOT_ROW[i] as usize][ARC_SLOT_SIDE[i] as usize] };
 }
 
-/// the capture dive: it steers to the ship, the beam starts at y 196
+/// the capture dive: it steers to the ship, the beam starts at y `beam_y`
 fn dive_step_old(g: &mut Game, i: usize) {
     let diff = g.diff;
     let px = g.px;
     let odd_frame = g.frame & 1 != 0;
     let beam_step = ARC_STAGE[arc_stage_no(g.stage)][1 + 6] * 10 * 5 / 6 / 4;
+    let geo = g.geo;
     let a = &mut g.al[i];
-    let dy = if diff >= 5 { 3 } else { 2 };
+    let dy = if diff >= 5 { geo.cdive_v1 } else { geo.cdive_v0 };
     if a.timer > 0 {
         a.timer -= 1;
-        a.x += 2 * a.dir;
-        a.y += 1;
+        a.x += geo.peel_vx * a.dir;
+        a.y += geo.peel_vy;
         return;
     }
     a.y += dy;
     if a.capdive != 0 || odd_frame {
         a.x += if a.x < px { 1 } else if a.x > px { -1 } else { 0 };
     }
-    if a.capdive != 0 && a.y >= 196 {
+    if a.capdive != 0 && a.y >= geo.beam_y {
         a.st = A_BEAM;
         g.cap = C_BEAM;
         g.beam_len = 0;
@@ -660,9 +769,9 @@ fn dive_step_old(g: &mut Game, i: usize) {
         // 10 x p6 arcade frames to grow (p6 = 12, 9 or 6 by stage), then 64 frames to take the ship, then the same to go
         g.beam_ph = 0;
         g.beam_step = beam_step;
-    } else if a.y >= 244 {
+    } else if a.y >= geo.off_y {
         a.st = A_RETURN;
-        a.y = 0;
+        a.y = geo.ret_y0;
         a.capdive = 0;
     }
 }
@@ -684,26 +793,27 @@ fn dive_step(g: &mut Game, i: usize) {
     let px = g.px;
     let odd_frame = g.frame & 1 != 0;
     let sy = slot_py(g, i);
+    let geo = g.geo;
     let a = &mut g.al[i];
-    if a.dpath >= 0 && a.pstep < ARC_DIVE_PATH[a.dpath as usize].n {
-        let d = ARC_DIVE_PATH[a.dpath as usize].d;
+    if a.dpath >= 0 && a.pstep < g.arc.dive_path[a.dpath as usize].n {
+        let d = g.arc.dive_path[a.dpath as usize].d;
         let k = 2 * a.pstep as usize;
         a.x += d[k] as i32;
         a.y += d[k + 1] as i32;
     } else {
         // the end of the arcade path of a butterfly (it aims at the ship)
-        a.y += 3;
+        a.y += geo.tail_vy;
         if odd_frame {
             a.x += if a.x < px { 1 } else if a.x > px { -1 } else { 0 };
         }
     }
     a.pstep += 1;
-    if a.y >= 244 {
+    if a.y >= geo.off_y {
         // gone below the screen: back from the top when the arcade dive would end (the way back takes slot_y / 2 ticks)
-        let total = if a.dpath >= 0 { ARC_DIVE_PATH[a.dpath as usize].total } else { 220 };
+        let total = if a.dpath >= 0 { g.arc.dive_path[a.dpath as usize].total } else { 220 };
         a.st = A_RETURN;
-        a.y = 0;
-        a.timer = total - a.pstep - sy / 2;
+        a.y = geo.ret_y0;
+        a.timer = total - a.pstep - (sy - geo.ret_y0) / geo.ret_v;
         if a.timer < 0 {
             a.timer = 0;
         }
@@ -739,7 +849,7 @@ fn update_aliens(g: &mut Game) {
                     a.timer -= 1;
                     continue;
                 }
-                a.y += 2;
+                a.y += g.geo.ret_v;
                 if a.y >= sy {
                     a.y = sy;
                     a.st = A_FORM;
@@ -885,7 +995,7 @@ fn arc_frame(g: &mut Game) {
         }
         a.btmr = hdr0;
         let (ax, ay, flag) = (a.x, a.y, a.bflags & 1 != 0);
-        if flag && ay <= BOMB_LOW_Y && g.hold == 0 {
+        if flag && ay >= g.geo.bomb_top_y && ay <= g.geo.bomb_low_y && g.hold == 0 {
             spawn_ebullet(g, ax, ay);
         }
         g.al[i].bflags >>= 1;
@@ -943,7 +1053,7 @@ fn update_ebullets(g: &mut Game) {
             b.ax += b.dx;
             b.x += b.ax >> 4;
             b.ax &= 15;
-            if b.y >= 250 {
+            if b.y >= g.geo.bomb_off_y {
                 b.act = 0;
             }
         }
@@ -951,6 +1061,7 @@ fn update_ebullets(g: &mut Game) {
 }
 
 fn update_collisions(g: &mut Game) {
+    let geo = g.geo;
     for i in 0..4 {
         if g.ps[i].act == 0 {
             continue;
@@ -961,7 +1072,7 @@ fn update_collisions(g: &mut Game) {
                 continue;
             }
             let (sx, sy) = (g.ps[i].x, g.ps[i].y);
-            if sy - 8 <= a.y && a.y < sy + 8 && a.x - 6 <= sx && sx < a.x + 12 {
+            if sy - geo.hb_shot_y <= a.y && a.y < sy + geo.hb_shot_y && a.x - geo.hb_shot_xl <= sx && sx < a.x + geo.hb_shot_xr {
                 g.ps[i].act = 0;
                 alien_hit(g, j);
                 break;
@@ -973,10 +1084,10 @@ fn update_collisions(g: &mut Game) {
     }
     let mut i = 0;
     while i < EBN && g.state == S_PLAY {
-        if g.eb[i].act != 0 && g.eb[i].y >= 227 && g.eb[i].y <= 240 {
+        if g.eb[i].act != 0 && g.eb[i].y >= geo.ship_y + geo.hb_bomb_y0 && g.eb[i].y <= geo.ship_y + geo.hb_bomb_y1 {
             for j in 0..1 + g.dual {
-                let sx = g.px + 16 * j;
-                if g.eb[i].x >= sx - 6 && g.eb[i].x <= sx + 7 {
+                let sx = g.px + geo.dual_dx * j;
+                if g.eb[i].x >= sx - geo.hb_bomb_xl && g.eb[i].x <= sx + geo.hb_bomb_xr {
                     g.eb[i].act = 0;
                     player_hit(g, j);
                     break;
@@ -991,8 +1102,8 @@ fn update_collisions(g: &mut Game) {
         let a = g.al[j];
         if (a.st == A_DIVE) || (a.st == A_ENTER && a.ent != 0) {
             for s in 0..1 + g.dual {
-                let sx = g.px + 16 * s;
-                if a.y >= g.py - 7 && a.y <= g.py + 8 && a.x > sx - 8 && a.x <= sx + 8 {
+                let sx = g.px + geo.dual_dx * s;
+                if a.y >= g.py - geo.hb_ram_y0 && a.y <= g.py + geo.hb_ram_y1 && a.x > sx - geo.hb_ram_x && a.x <= sx + geo.hb_ram_x {
                     if a.capdive != 0 {
                         release_capture(g, j as i32); // ramming boss drops its captive
                     }
@@ -1013,6 +1124,7 @@ fn update_collisions(g: &mut Game) {
 
 // ---- tractor beam, capture, rescue ----
 fn update_capture(g: &mut Game) {
+    let geo = g.geo;
     if g.cap == C_BEAM {
         let bi = g.cap_boss as usize;
         if g.frame & 31 == 0 {
@@ -1036,10 +1148,10 @@ fn update_capture(g: &mut Game) {
                 if g.beam_len <= 0 {
                     g.cap = C_NONE;
                     g.al[bi].st = A_RETURN;
-                    g.al[bi].y = 0;
+                    g.al[bi].y = geo.ret_y0;
                 }
             }
-        } else if g.state == S_PLAY && g.invuln == 0 && g.px >= g.al[bi].x - 20 && g.px <= g.al[bi].x + 19 {
+        } else if g.state == S_PLAY && g.invuln == 0 && g.px >= g.al[bi].x - geo.hb_beam_xl && g.px <= g.al[bi].x + geo.hb_beam_xr {
             g.cap = C_PULL;
             g.state = S_CAPTURED;
             g.dual = 0;
@@ -1053,17 +1165,17 @@ fn update_capture(g: &mut Game) {
             }
         }
     } else if g.cap == C_RESCUE {
-        let tx = g.px + 16;
-        g.ry += 3;
-        if g.ry > 230 {
-            g.ry = 230;
+        let tx = g.px + geo.dual_dx;
+        g.ry += geo.resc_vy;
+        if g.ry > geo.ship_y {
+            g.ry = geo.ship_y;
         }
-        g.rx += if g.rx < tx { 2 } else if g.rx > tx { -2 } else { 0 };
-        if g.ry == 230 && g.state == S_PLAY && g.rx - tx >= -4 && g.rx - tx <= 3 {
+        g.rx += if g.rx < tx { geo.resc_vx } else if g.rx > tx { -geo.resc_vx } else { 0 };
+        if g.ry == geo.ship_y && g.state == S_PLAY && g.rx - tx >= -geo.hb_dock_l && g.rx - tx <= geo.hb_dock_r {
             g.cap = C_NONE;
             g.dual = 1;
-            if g.px > 304 {
-                g.px = 304;
+            if g.px > geo.ship_xmax - geo.dual_dx {
+                g.px = geo.ship_xmax - geo.dual_dx;
             }
             g.snd |= JG_RESCUE;
         }
@@ -1072,15 +1184,16 @@ fn update_capture(g: &mut Game) {
 
 fn update_captured(g: &mut Game) {
     let bi = g.cap_boss as usize;
+    let geo = g.geo;
     update_ebullets(g);
-    g.py -= 2;
-    if g.py - g.al[bi].y >= 22 {
+    g.py -= geo.pull_v;
+    if g.py - g.al[bi].y >= geo.pull_done {
         return;
     }
-    g.py = 230;
+    g.py = geo.ship_y;
     g.cap = C_CARRY;
     g.al[bi].st = A_RETURN;
-    g.al[bi].y = 0;
+    g.al[bi].y = geo.ret_y0;
     g.al[bi].capdive = 0;
     g.lives -= 1;
     if g.lives <= 0 {
@@ -1206,7 +1319,7 @@ impl Game {
                 g.state_timer -= 1;
                 if g.state_timer <= 0 {
                     g.state = S_PLAY;
-                    g.px = 160;
+                    g.px = g.geo.ship_x0;
                     g.invuln = 120;
                     g.tmr2 += 30; // after a death the sorties start slowly again
                     if g.tmr2 > 120 {

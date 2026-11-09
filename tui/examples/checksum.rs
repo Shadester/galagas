@@ -1,10 +1,11 @@
 //! Prints the checksum of the game after N autoplay ticks with the ship invulnerable, through the same exports the browser uses:
-//! tests/test_web.py compares it with the one from the WebAssembly module. Usage: checksum [TICKS]
+//! tests/test_web.py compares it with the one from the WebAssembly module. Usage: checksum [TICKS] [PORTRAIT 0|1]
 use galaga_tui::web::*;
 
 fn main() {
     let n: u32 = std::env::args().nth(1).and_then(|s| s.parse().ok()).unwrap_or(4000);
-    web_init(0, 0, 1, 1, 137, 40);
+    let portrait: i32 = std::env::args().nth(2).and_then(|s| s.parse().ok()).unwrap_or(0);
+    web_init(0, 0, 1, 1, 137, 40, portrait);
     for _ in 0..n {
         web_tick(0);
     }

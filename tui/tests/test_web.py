@@ -15,7 +15,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TUI = os.path.join(HERE, '..')
 DOCS = os.path.join(TUI, '..', 'docs')
 subprocess.run([os.path.join(TUI, 'tools', 'build_web.sh')], check=True, stdout=subprocess.DEVNULL)
-native = int(subprocess.run(['cargo', 'run', '--release', '-q', '--example', 'checksum', '--', '4000'], cwd=TUI, check=True, capture_output=True, text=True).stdout)
+native = [int(subprocess.run(['cargo', 'run', '--release', '-q', '--example', 'checksum', '--', '4000', str(portrait)], cwd=TUI, check=True, capture_output=True, text=True).stdout)
+          for portrait in (0, 1)]    # the landscape field and the portrait field
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a):
@@ -58,8 +59,9 @@ with sync_playwright() as p:
     check('the page draws the game', pixels(pg) > 5000, pixels(pg))
     check('the game runs at about 50 ticks a second', 150 < pg.evaluate('window.__galaga.ticks') < 330)
     pg.screenshot(path='/tmp/tui_web_big.png')
-    check('the module plays the same game as the native build (checksum after 4000 ticks)',
-          pg.evaluate("() => { const x = window.__galaga.x; x.web_init(0, 0, 1, 1, 137, 40); for (let i = 0; i < 4000; i++) x.web_tick(0); return x.web_checksum(); }") == native, native)
+    for portrait in (0, 1):
+        check('the module plays the same game as the native build (checksum after 4000 ticks, %s field)' % ('portrait' if portrait else 'landscape'),
+              pg.evaluate("(p) => { const x = window.__galaga.x; x.web_init(0, 0, 1, 1, 137, 40, p); for (let i = 0; i < 4000; i++) x.web_tick(0); return x.web_checksum(); }", portrait) == native[portrait], native)
     pg.keyboard.press('q')
     pg.wait_for_timeout(200)
     check('the hi-score is saved in localStorage', int(pg.evaluate("localStorage.getItem('galaga-tui-hi') || '0'")) > 0)
