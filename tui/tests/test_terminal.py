@@ -106,6 +106,17 @@ p.pump(1.0)
 check('a big window is drawn again', len(p.buf) > 20000)
 p.close()
 
+# a window that goes full screen or is tiled sends a burst of resizes: the last size is the one that counts, also when keys come in the same batch
+p = Pty(30, 90, '--autoplay')
+p.pump(1.0)
+p.buf = b''
+for rows, cols in ((20, 70), (40, 120), (24, 80), (50, 150), (56, 170)):
+    p.resize(rows, cols)
+os.write(p.fd, b'z')                       # a key behind the resizes, in the same batch
+p.pump(1.5)
+check('a burst of resizes: the picture is drawn for the last size (rows 50 to 56 are written)', b'\x1b[55;' in p.buf or b'\x1b[56;' in p.buf)
+p.close()
+
 p = Pty(30, 90, kitty=True)
 p.pump(1.0)
 check('the kitty keyboard flags are pushed', b'\x1b[>' in p.buf)

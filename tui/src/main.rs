@@ -1,5 +1,5 @@
 //! Galaga for the terminal. Keys: A / D or the arrows move, Space fires, P pauses, Q quits (on the title screen: leaves).
-use crossterm::event::{self, Event};
+use crossterm::event;
 use galaga_tui::game::*;
 use galaga_tui::hiscore;
 use galaga_tui::input::Keys;
@@ -76,18 +76,20 @@ fn main() -> io::Result<()> {
         let now = Instant::now();
         let wait = next_tick.saturating_duration_since(now).min(FRAME);
         if event::poll(wait)? {
-            let ev = event::read()?;
-            if let Event::Resize(c, r) = ev {
-                cols = c as usize;
-                rows = r as usize;
-                renderer = make_renderer(field, &term, cols, rows, mode);
-                term.invalidate();
-                dirty = true;
-            }
-            keys.event(ev, Instant::now());
+            keys.event(event::read()?, Instant::now());
             while event::poll(Duration::ZERO)? {
                 keys.event(event::read()?, Instant::now());
             }
+        }
+        if keys.resized {
+            // A window that goes full screen or is tiled sends a burst of resizes (an in-between size, then the final one). Any of them,
+            // also one behind a key in the same batch, sets the flag; the size is asked once, after the events, with the size of the cells
+            // (the renderer asks for it), so that all of it is from the same moment, not from the event.
+            keys.resized = false;
+            (cols, rows) = term.size();
+            renderer = make_renderer(field, &term, cols, rows, mode);
+            term.invalidate();
+            dirty = true;
         }
         if keys.exit || (game.state == S_TITLE && keys.peek_quit()) {
             break;
