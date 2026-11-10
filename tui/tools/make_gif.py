@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Record docs/gameplay.gif: the program runs in a pseudo-terminal (--autoplay), the screen is read with pyte and drawn cell by cell.
-Needs Pillow and pyte (pip install pillow pyte). Usage: python3 tools/make_gif.py [cols rows seconds]"""
+Needs Pillow and pyte (pip install pillow pyte). Usage: python3 tools/make_gif.py [cols rows seconds [blocks|octants [landscape]]]
+The default is the portrait field (the program's own default) with octant characters in an 85 x 57 window (a canvas of 170 x 217 pixels):
+the octant cells are drawn as their 2 x 4 pixels, so the picture has 4 times the pixels of half blocks. `blocks` records half blocks
+(a window of at least 51 x 35 for the portrait field), `landscape` the C64's field (80 x 27 with blocks, 160 x 52 with octants)."""
 import fcntl
 import os
 import pty
@@ -11,17 +14,27 @@ import sys
 import termios
 import time
 
+import re
+
 import pyte
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXE = os.path.join(HERE, '..', 'target', 'release', 'galaga-tui')
-COLS, ROWS, SECONDS = (int(v) for v in (sys.argv[1:4] + ['80', '27', '30'][len(sys.argv) - 1:]))
+LANDSCAPE = 'landscape' in sys.argv[1:]
+MODE = 'blocks' if 'blocks' in sys.argv[1:] else 'octants'
+NUMS = [a for a in sys.argv[1:] if a.isdigit()]
+DEFAULT = (['80', '27', '30'] if MODE == 'blocks' else ['160', '52', '30']) if LANDSCAPE else (['51', '35', '30'] if MODE == 'blocks' else ['85', '57', '30'])
+COLS, ROWS, SECONDS = (int(v) for v in NUMS + DEFAULT[len(NUMS):])
 CW, CH, FPS = 6, 12, 10
+
+# the octant characters: the character -> the pattern of its 2 x 4 pixels (bit i = octant i + 1: 1 2 / 3 4 / 5 6 / 7 8), from src/octant.rs
+OCT = {chr(int(h, 16)) if len(h) > 1 else h: i for i, h in enumerate(re.findall(r"'(?:\\u\{([0-9a-f]+)\}| )'", open(os.path.join(HERE, '..', 'src', 'octant.rs')).read()))}
+OCT[' '] = 0
 
 
 def font():
-    for p in ('/System/Library/Fonts/Menlo.ttc', '/System/Library/Fonts/Monaco.ttf', '/Library/Fonts/Arial Unicode.ttf'):
+    for p in ('/System/Library/Fonts/Menlo.ttc', '/System/Library/Fonts/Monaco.ttf', '/Library/Fonts/Arial Unicode.ttf', '/usr/share/fonts/TTF/DejaVuSansMono.ttf'):
         if os.path.exists(p):
             return ImageFont.truetype(p, 10)
     return ImageFont.load_default()
@@ -43,7 +56,12 @@ def picture(screen, fnt):
         for x in range(COLS):
             c = screen.buffer[y][x]
             fg, bg = color(c.fg, (255, 255, 255)), color(c.bg, (0, 0, 0))
-            if c.data == '▀':
+            if c.data in OCT and c.data != ' ':
+                mask = OCT[c.data]
+                for i in range(8):
+                    px, py = x * CW + (i % 2) * (CW // 2), y * CH + (i // 2) * (CH // 4)
+                    d.rectangle([px, py, px + CW // 2 - 1, py + CH // 4 - 1], fill=fg if mask >> i & 1 else bg)
+            elif c.data == '▀':
                 d.rectangle([x * CW, y * CH, x * CW + CW - 1, y * CH + CH // 2 - 1], fill=fg)
                 d.rectangle([x * CW, y * CH + CH // 2, x * CW + CW - 1, y * CH + CH - 1], fill=bg)
             else:
@@ -56,7 +74,7 @@ def picture(screen, fnt):
 pid, fd = pty.fork()
 if pid == 0:
     os.environ.update(TERM='xterm-256color', COLORTERM='truecolor')
-    os.execv(EXE, [EXE, '--no-save', '--autoplay'])
+    os.execv(EXE, [EXE, '--no-save', '--autoplay', '--' + MODE] + (['--landscape'] if LANDSCAPE else []))
 fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', ROWS, COLS, 0, 0))
 screen = pyte.Screen(COLS, ROWS)
 stream = pyte.ByteStream(screen)

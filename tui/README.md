@@ -4,7 +4,7 @@ A Galaga clone for the terminal, written in Rust. It plays by the rules of the a
 the arcade fly-in waves and flight paths, the dive scheduler with escorts, aimed bombs, a formation that swings and then breathes, the tractor
 beam, and challenge stages. The picture is pixel art made of half-block characters in 24-bit colour; the sprites are our own.
 
-![Gameplay in an 80 x 27 terminal: the stage intro, the fly-in, dives and shots](docs/gameplay.gif)
+![Gameplay in an 85 x 57 terminal, the portrait field drawn with octant characters: the fly-in, dives and shots](docs/gameplay.gif)
 
 ## Build and run
 
@@ -83,7 +83,7 @@ cargo run --release --example octants_ppm --no-default-features -- 1500 out.ppm 
 python3 tools/gen_octants.py [--check]                  # src/octant.rs: the character for each pattern of 2 x 4 pixels
 python3 tools/gen_arcade_rs.py                          # src/arcade_data.rs and src/arcade_data_portrait.rs from ../psp/arcade_data.h and arcade_data_portrait.h
 python3 tools/gen_art_rs.py                             # src/art.rs from ../psp/art.h
-python3 tools/make_gif.py [cols rows seconds]           # docs/gameplay.gif (needs pillow and pyte)
+python3 tools/make_gif.py [cols rows seconds [blocks|octants [landscape]]]   # docs/gameplay.gif: the portrait field in octants, 85 x 57 (needs pillow and pyte)
 ```
 
 ## Source layout
