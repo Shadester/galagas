@@ -20,19 +20,18 @@ static void set_ptr(int ch, const void *p, int words) {
     AUD(ch, 4) = words;
 }
 
-static void wait_line(void) {
-    u16 v = W(0x006) >> 8;
-    while ((W(0x006) >> 8) == v) ;
-}
-
-/* A sample that plays once: Paula repeats what it has, so after it started, the pointer is set to a silent word. */
+/* A sample that plays once: Paula repeats what it has, so after it started, the pointer is set to a silent word. "Started" is the audio interrupt request of the
+   channel (INTREQ bit 7 + ch): Paula has then taken the pointer. (A fixed wait of one line was not enough on a real Amiga: the DMA slot of a channel can come
+   after the next line starts, the silent pointer was taken instead, and the sound was missing at random. The limit is for a machine that never sets the bit.) */
 static void sfx(int ch, int id, int vol) {
+    int n;
     DMACON = 1 << ch;
     set_ptr(ch, sfx_data + sfx_table[id][0], sfx_table[id][1]);
     AUD(ch, 6) = SFX_RATE_PERIOD;
     AUD(ch, 8) = vol;
+    W(0x09c) = 0x80 << ch;                                 /* INTREQ: clear the request of the channel */
     DMACON = 0x8000 | (1 << ch);
-    wait_line();
+    for (n = 0; n < 4000 && !(W(0x01e) & (0x80 << ch)); ++n) ;     /* INTREQR */
     set_ptr(ch, silence, 1);
 }
 

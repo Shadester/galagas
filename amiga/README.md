@@ -77,7 +77,7 @@ To play it, run `tools/run.sh`: it starts the `.adf` in FS-UAE (`brew install --
 
 The game also runs from a hard disk or a CompactFlash card. `tools/pack_hd.sh` makes two archives in `build/` (they are also in the GitHub release "latest"):
 
-- `galaga-amiga-whdload.lha`: a [WHDLoad](https://www.whdload.de/) installation. Unpack it on the hard disk, and click the icon in the drawer `Galaga`: **Galaga** for an Amiga 500 (OCS, 512 KB chip RAM) or **GalagaAGA** for an Amiga 1200 (AGA, 1 MB chip RAM, more colours). WHDLoad must be in `C:`. **F10** quits to the Workbench.
+- `galaga-amiga-whdload.lha`: a [WHDLoad](https://www.whdload.de/) installation. Unpack it on the hard disk, and click the icon in the drawer `Galaga`: **Galaga** for an Amiga 500 (OCS, 512 KB chip RAM) or **GalagaAGA** for an Amiga 1200 (AGA, 1 MB chip RAM, more colours). WHDLoad must be in `C:`. **F10** quits to the Workbench at any time, and so does **Esc** on the title screen or the game over screen (Esc in the game goes to the title screen).
 - `galaga-amiga-hd.lha`: the program `Galaga` with an icon. It does not need WHDLoad. It switches the operating system off, as the boot block does, so there is no way back: reset the machine to stop it.
 
 How it works: the game is built again with `-DWHDLOAD -DNOCACHE` (`make whd`). WHDLoad switches the cache on, and the quit key goes to `resload_Abort` (`hw.s`). The Slave (`src/whdload.s`) loads `data/galaga.bin` to 0x1000 and, for AGA, `data/galaga.aga` to 0x80000, then starts the game like the boot block does. The program (`src/exe.s`, `make exe`) holds the game and the AGA data. `tools/make_hunk.py` makes the AmigaDOS hunk file, `tools/make_icon.py` the icons, `tools/make_lha.py` the archive (stored, not compressed).

@@ -53,6 +53,12 @@ vbl:    move.w  #0x0020,0xdff09c        | INTREQ: clear the vertical blank reque
         addq.l  #1,vbl_count
         rte
 idle:   rte
+        .ifdef  WHDLOAD
+hw_quit:move.l  0x404.w,a0              | the resload (the Slave put it at 0x404)
+        pea     -1.w                    | TDREASON_OK
+        jmp     4(a0)                   | resload_Abort (by jmp)
+        .global hw_quit
+        .endif
 
 | Keyboard: a key code arrives in the serial data register of CIA-A: bit 7 of the decoded code is 1 for a key release.
 | The key must be acknowledged by a pulse (about 85 microseconds) on the handshake line (bit 6 of CRA).
@@ -65,12 +71,8 @@ kbd:    movem.l d0-d1/a0,-(sp)
         not.b   d0
         ror.b   #1,d0                   | the key code, 0..127, and bit 7 = release
         .ifdef  WHDLOAD
-        cmp.b   0x400.w,d0              | the quit key (the Slave put its code at 0x400 and the resload at 0x404): WHDLoad cannot see it on a 68000
-        bne.s   7f
-        move.l  0x404.w,a0
-        pea     -1.w                    | TDREASON_OK
-        jmp     4(a0)                   | resload_Abort (by jmp)
-7:
+        cmp.b   0x400.w,d0              | the quit key (the Slave put its code at 0x400): WHDLoad cannot see it on a 68000
+        beq     hw_quit
         .endif
         move.b  d0,d1
         and.w   #0x7f,d1

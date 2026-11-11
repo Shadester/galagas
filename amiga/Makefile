@@ -52,7 +52,7 @@ web: $(BUILD)/galaga.adf
 WHD = build/whd
 ifeq ($(BUILD),build)
 $(WHD)/game.bin: $(wildcard src/*.c src/*.s src/*.h) ../psp/game.c tools/gen_assets.py tools/art.py
-	$(MAKE) BUILD=$(WHD) EXTRA_ASFLAGS="--defsym WHDLOAD=1 --defsym NOCACHE=1" $(WHD)/game.bin $(WHD)/aga.bin
+	$(MAKE) BUILD=$(WHD) EXTRA_CFLAGS=-DWHDLOAD EXTRA_ASFLAGS="--defsym WHDLOAD=1 --defsym NOCACHE=1" $(WHD)/game.bin $(WHD)/aga.bin
 	touch $@
 endif
 

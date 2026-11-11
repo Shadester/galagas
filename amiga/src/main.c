@@ -8,6 +8,9 @@
 
 extern volatile u32 vbl_count;
 extern volatile u8 keys[128];
+#ifdef WHDLOAD
+void hw_quit(void);
+#endif
 
 #define REG(r) (*(volatile u16 *)(0xdff000 + (r)))
 
@@ -285,6 +288,9 @@ int main(void) {
         u32 t0 = now_lines(), t1, t2;
 #endif
         read_input(&in);
+#ifdef WHDLOAD
+        if (in.quit && (g.state == S_TITLE || g.state == S_GAMEOVER)) hw_quit();     /* Esc on the title screen leaves to the Workbench (F10 at any time: hw.s) */
+#endif
         while (n--) {
 #ifdef HALT
             if (t >= HALT) break;

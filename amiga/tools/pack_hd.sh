@@ -18,7 +18,7 @@ Galaga for the Amiga (WHDLoad)
 ==============================
 Galaga:     Amiga 500 and up (OCS, ECS, 512 KB chip RAM).
 GalagaAGA:  Amiga 1200, 4000 (AGA, 1 MB chip RAM): the game has more colours.
-Click the icon. F10 quits. The controls are in the game: https://github.com/Shadester/galagas
+Click the icon. F10 quits at any time; Esc quits on the title screen. The controls are in the game: https://github.com/Shadester/galagas
 Needs WHDLoad (https://www.whdload.de/) in C: and a Kickstart 1.3 or newer.
 EOF
 (cd $D && python3 ../../tools/make_lha.py ../galaga-amiga-whdload.lha Galaga.info Galaga)
