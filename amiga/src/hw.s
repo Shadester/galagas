@@ -64,6 +64,14 @@ kbd:    movem.l d0-d1/a0,-(sp)
         move.b  0xbfec01,d0
         not.b   d0
         ror.b   #1,d0                   | the key code, 0..127, and bit 7 = release
+        .ifdef  WHDLOAD
+        cmp.b   0x400.w,d0              | the quit key (the Slave put its code at 0x400 and the resload at 0x404): WHDLoad cannot see it on a 68000
+        bne.s   7f
+        move.l  0x404.w,a0
+        pea     -1.w                    | TDREASON_OK
+        jmp     4(a0)                   | resload_Abort (by jmp)
+7:
+        .endif
         move.b  d0,d1
         and.w   #0x7f,d1
         lea     keys,a0                 | (a0 is free: it is saved below)

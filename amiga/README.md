@@ -73,6 +73,16 @@ python3 tools/make_gif.py                   # record docs/gameplay.gif (about 2 
 
 To play it, run `tools/run.sh`: it starts the `.adf` in FS-UAE (`brew install --cask fs-uae-emulator` on macOS, `pacman -S fs-uae` on Arch) in a window, with the AROS replacement ROM that is inside FS-UAE. (`KICKSTART=file` uses a Kickstart ROM instead. vAmiga cannot take a disk from the command line.) On a real Amiga, write the ADF to a floppy disk.
 
+## Install on a hard disk
+
+The game also runs from a hard disk or a CompactFlash card. `tools/pack_hd.sh` makes two archives in `build/` (they are also in the GitHub release "latest"):
+
+- `galaga-amiga-whdload.lha`: a [WHDLoad](https://www.whdload.de/) installation. Unpack it on the hard disk, and click the icon in the drawer `Galaga`: **Galaga** for an Amiga 500 (OCS, 512 KB chip RAM) or **GalagaAGA** for an Amiga 1200 (AGA, 1 MB chip RAM, more colours). WHDLoad must be in `C:`. **F10** quits to the Workbench.
+- `galaga-amiga-hd.lha`: the program `Galaga` with an icon. It does not need WHDLoad. It switches the operating system off, as the boot block does, so there is no way back: reset the machine to stop it.
+
+How it works: the game is built again with `-DWHDLOAD -DNOCACHE` (`make whd`). WHDLoad switches the cache on, and the quit key goes to `resload_Abort` (`hw.s`). The Slave (`src/whdload.s`) loads `data/galaga.bin` to 0x1000 and, for AGA, `data/galaga.aga` to 0x80000, then starts the game like the boot block does. The program (`src/exe.s`, `make exe`) holds the game and the AGA data. `tools/make_hunk.py` makes the AmigaDOS hunk file, `tools/make_icon.py` the icons, `tools/make_lha.py` the archive (stored, not compressed).
+`tools/run-hd.sh exe|Galaga|GalagaAGA` runs them in FS-UAE (for WHDLoad: `WHDLOAD=/path/to/C/WHDLoad`).
+
 The tests run the game in vAmigaWeb in a headless browser. Install it once: `pip install playwright pillow && playwright install chromium`.
 The tests of the Amiga 1200 run FS-UAE (`tests/fsuae.py`; the Kickstart ROM is your own, in `~/Documents/FS-UAE/Kickstarts`) and take a picture of its window only: macOS asks once for the permission Screen Recording. `pip install pyobjc-framework-Quartz`.
 
@@ -97,9 +107,10 @@ Debug flags (`make EXTRA_CFLAGS="-DAUTOPLAY -DHALT=900"`): `AUTOPLAY` (the game 
 | `src/video.c` | Copper list, three bitmaps, blitter sprites (drawn again only when they change), text, the star sprites, the beam, the title picture, the hud that is drawn only when it changes |
 | `src/audio.c` | Paula: effects on channels 0, 1 and 3, the jingles on channel 2 |
 | `src/boot.s` | The boot block: loads the game into chip RAM and starts it in supervisor mode |
+| `src/whdload.s`, `src/exe.s` | The WHDLoad Slave, and the program for a hard disk (see "Install on a hard disk") |
 | `src/hw.s` | Start-up, the vertical-blank interrupt (50 Hz), the keyboard interrupt |
 | `src/assets.h` | Generated: sprites, title picture, font, sound |
 | `src/libc.c`, `src/inc/` | The few C library functions `psp/game.c` needs |
 | `src/selftest.h` | The scripted game and its hash (the Mac and the 68000 both run it) |
-| `tools/` | `setup-macos.sh`, `setup-linux.sh`, `run.sh` (build and run in FS-UAE), `art.py` (palette and pixel art), `gen_assets.py`, `make_adf.py` (checksum of the boot block, the disk image), `make_gif.py` |
+| `tools/` | `setup-macos.sh`, `setup-linux.sh`, `run.sh` (build and run in FS-UAE), `art.py` (palette and pixel art), `gen_assets.py`, `make_adf.py` (checksum of the boot block, the disk image), `make_gif.py`, `pack_hd.sh` + `make_hunk.py`, `make_icon.py`, `make_lha.py`, `run-hd.sh` (the hard disk versions) |
 | `tests/` | `test_selftest.py` (+ `selftest_native.c`), `shots.py` + `ref/`, `vamiga.py` (runs an ADF in vAmigaWeb) |

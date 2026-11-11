@@ -9,6 +9,7 @@ built here without floats. `README.md` has the status, controls, commands and th
 tools/setup-macos.sh                  # once: m68k-elf-gcc, binutils, FS-UAE, Pillow (Homebrew)
 make                                  # build/galaga.adf (m68k-elf-gcc -O3, objcopy, tools/make_adf.py): the game + build/aga.bin (the AGA data, read only on an AGA machine)
 tools/run.sh                          # build and run it in FS-UAE (brew install --cask fs-uae-emulator)
+tools/pack_hd.sh                      # build/galaga-amiga-whdload.lha (WHDLoad Slaves) and galaga-amiga-hd.lha (the program with an icon); tools/run-hd.sh runs them in FS-UAE
 make web                              # docs/galaga.adz for the play link in the READMEs
 python3 tests/test_selftest.py [n]    # the 68000 in vAmigaWeb vs the Mac, 4 scenarios (about 10 s)
 python3 tests/shots.py [--update] [case ...]   # screenshots in vAmigaWeb; look at new refs before you commit them
@@ -82,6 +83,14 @@ python3 tests/compare.py [--ref COMMIT] [--flags -DNOASM] [--quick]   # a speed 
 - **The tractor beam is blitter sprites** (`beam_now`, ids `SPR_BEAM + 4 * row + phase`, `beam_list` in `tools/gen_assets.py`). Before, the CPU wrote it pixel by pixel into chip RAM: in the autoplay window of the first capture (`-DPROFILE -DAUTOPLAY -DTITLE_HOLD=0 -DHALT=5700 -DPROF_FROM=5389`) the game ran at 74 % of 50 fps (231 of 311 loops), now at 96 % (299). `tests/compare.py beam5450 beam5500 beam5560 beam5650` compares the pictures with another commit (a commit from before the ring art shows differences: the rings are new art). Measure a part like this first: switch it off with a temporary flag and look at the loops. Two ideas were measured this way and dropped: a cache for unchanged text (text costs at most 1.5 % of the loops in 400 ticks) and the two extra `wait_blit` calls in `video_end` (the same loops).
 - **fast.s** (assembly, with the same code in C under `-DNOASM`): `stars_layer`, `alien_wants` (main.c), and the sprite passes of `draw_sprites`: `sprites_scan` (which slots changed; a `Place` has everything the blitter needs, computed once; a slot has two places, the new and the old one), `sprites_mark` (the 16 x 16 cells; a kept sprite in a marked cell is drawn again; quick test with the marked rows and columns), `sprites_clear`, `sprites_blit` (in slot order: later slots are in front). The struct offsets are checked by `_Static_assert`s in video.c and main.c. Text and the hud use the blitter too: every character is a sprite (`glyph_list` in tools/gen_assets.py); the hud draws a part again in a bitmap only when its value changed (`video_hud`).
 - **16-bit friendly code:** a 32-bit `*` and `/` call libgcc (slow on a 68000). The scripted-game hash uses rotate / xor / add for this reason.
+
+## Hard disk versions (WHDLoad, the program)
+
+- `make whd` builds the game again in `build/whd` with `--defsym WHDLOAD=1 --defsym NOCACHE=1` (only `hw.s` differs: no `movec`, and the quit key at 0x400 (the Slave puts the key code there, the resload at 0x404) jumps to `resload_Abort`;
+  WHDLoad cannot see the key on a 68000). The normal ADF must stay byte for byte the same (`docs/galaga.adz` unpacked is the check).
+- The Slave is a hunk file (WHDLoad does not read flat binaries): `m68k-elf-as` + `objcopy -O binary` + `tools/make_hunk.py`. Two Slaves from `src/whdload.s`: OCS (`ws_BaseMemSize` 512 KB) and AGA (`--defsym AGA=1`, 1 MB: the game is 420 KB with its bss, the AGA data and bitmaps need 380 KB more; they go to 0x80000). The offsets of `resload_*` are from `whdload.i` (Abort 4, LoadFile 8, SetCACR 16, FlushCache 32).
+- `src/exe.s` (`make exe`): the game and the AGA data are inside the program (`.incbin`). The pc relative reach is 32 KB: use `lea start(pc)` and `add.l #label-start`. The copy to 0x1000 runs from 0x800 and goes backwards if the image is below 0x1000 + size. It sets VBR to 0 (68010+), as the game writes the vectors at 0.
+- Icons are the classic format (2 planes). FS-UAE window pictures need Screen Recording for the terminal (`tests/fsuae.py`); WHDLoad itself is not in the repo (https://www.whdload.de/, `WHDLOAD=` for `tools/run-hd.sh`).
 
 ## vAmigaWeb (the test emulator)
 

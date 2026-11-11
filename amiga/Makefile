@@ -47,3 +47,28 @@ web: $(BUILD)/galaga.adf
 	@ls -l docs/galaga.adz
 
 .PHONY: web
+
+# WHDLoad: the game built for it (hw.s: quit key, no cache), two Slaves (OCS 512 KB, AGA 1 MB) as hunk files, and the executable for the hard disk
+WHD = build/whd
+ifeq ($(BUILD),build)
+$(WHD)/game.bin: $(wildcard src/*.c src/*.s src/*.h) ../psp/game.c tools/gen_assets.py tools/art.py
+	$(MAKE) BUILD=$(WHD) EXTRA_ASFLAGS="--defsym WHDLOAD=1 --defsym NOCACHE=1" $(WHD)/game.bin $(WHD)/aga.bin
+	touch $@
+endif
+
+$(WHD)/%.slave: src/whdload.s tools/make_hunk.py | $(WHD)/game.bin
+	m68k-elf-as -m68000 --register-prefix-optional $(if $(findstring AGA,$*),--defsym AGA=1 --defsym AGABASE=0x80000) -o $(WHD)/$*.o $<
+	m68k-elf-objcopy -O binary -j .text $(WHD)/$*.o $(WHD)/$*.bin
+	python3 tools/make_hunk.py $(WHD)/$*.bin $@
+
+whd: $(WHD)/Galaga.slave $(WHD)/GalagaAGA.slave
+.PHONY: whd
+
+# build/Galaga: the program for a hard disk (src/exe.s holds the game and the AGA data)
+$(BUILD)/Galaga: src/exe.s $(BUILD)/game.bin $(BUILD)/aga.bin tools/make_hunk.py
+	m68k-elf-as -m68000 --register-prefix-optional -o $(BUILD)/exe.o $<
+	m68k-elf-objcopy -O binary -j .text $(BUILD)/exe.o $(BUILD)/exe.bin
+	python3 tools/make_hunk.py $(BUILD)/exe.bin $@
+
+exe: $(BUILD)/Galaga
+.PHONY: exe

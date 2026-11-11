@@ -14,6 +14,9 @@ add() { [ -f "$1" ] && cp "$1" "$OUT/$2" || echo "missing: $1" >&2; }
 make -C amiga >/dev/null                                   # build/galaga.adf (the disk image: the game and the AGA data)
 add amiga/build/galaga.adf galaga-amiga.adf
 add amiga/docs/galaga.adz galaga-amiga.adz
+amiga/tools/pack_hd.sh >/dev/null                          # the two hard disk archives (WHDLoad Slaves; the program with an icon)
+add amiga/build/galaga-amiga-whdload.lha galaga-amiga-whdload.lha
+add amiga/build/galaga-amiga-hd.lha galaga-amiga-hd.lha
 add docs/psp/EBOOT.PBP EBOOT.PBP
 mkdir -p "$OUT/psp/PSP/GAME/PSPGALAGA" && cp docs/psp/EBOOT.PBP "$OUT/psp/PSP/GAME/PSPGALAGA/" && (cd "$OUT/psp" && zip -qr ../galaga-psp.zip PSP) && rm -rf "$OUT/psp"
 add c64/docs/galaga.prg galaga-c64.prg
@@ -28,7 +31,7 @@ ls -l "$OUT" | sed 1d
 SHA=$(git rev-parse HEAD)
 NOTES="The binaries of commit $SHA ($(git log -1 --format=%s)).
 
-- Amiga: galaga-amiga.adf (a disk for an Amiga 500 or 1200, FS-UAE, a floppy emulator), galaga-amiga.adz (gzipped: vAmigaWeb)
+- Amiga: galaga-amiga.adf (a disk for an Amiga 500 or 1200, FS-UAE, a floppy emulator), galaga-amiga.adz (gzipped: vAmigaWeb), galaga-amiga-whdload.lha (the WHDLoad installation: Galaga for an A500, GalagaAGA for an A1200), galaga-amiga-hd.lha (a program with an icon for a hard disk, no WHDLoad)
 - PSP: galaga-psp.zip (copy the folder PSP to the memory stick) or EBOOT.PBP alone
 - C64: galaga-c64.prg, galaga-c64.d64
 - Atari Lynx: galaga-lynx.lnx, galaga-lynx-portrait.lnx
